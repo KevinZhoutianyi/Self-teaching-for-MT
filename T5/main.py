@@ -1,4 +1,6 @@
 
+
+# %%
 import os
 os.getcwd() 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -56,6 +58,7 @@ parser.add_argument('--syndata_loss_ratio', type=float,         default=0.2,    
 
 
 args = parser.parse_args(args=[])#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
+logging.info(args)
 
 # %%
 now = time.strftime("%Y-%m-%d-%H_%M_%S",time.localtime(time.time())) 
