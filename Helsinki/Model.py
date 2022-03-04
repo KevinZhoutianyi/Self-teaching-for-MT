@@ -89,7 +89,7 @@ class Model(nn.Module):
         # logits = logits[:,:,:32100]
        
         ## TODO: now we dont use ignoreindex
-        loss = self._criterion(logits.view(-1, logits.size(-1)),target_ids.view(-1, target_ids.size(-1)).long())
+        loss = self._criterion(logits.view(-1, logits.size(-1)),target_ids.view(-1, target_ids.size(-1)))
         return loss
 
     def get_loss_vec(self, input_ids, input_attn, target_ids = None, target_attn = None):
