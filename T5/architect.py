@@ -23,13 +23,13 @@ def _concat(xs):
 
 class Architect(object):
 
-    def __init__(self, w_model, v_model, A):
+    def __init__(self, w_model, v_model, A, args):
 
-        self.w_momentum = momentum
-        self.w_decay = decay
+        self.w_momentum = args.momentum
+        self.w_decay = args.decay
 
-        self.v_momentum =momentum
-        self.v_decay = decay
+        self.v_momentum =args.momentum
+        self.v_decay = args.decay
 
         self.w_model = w_model
 
@@ -42,7 +42,7 @@ class Architect(object):
         # change to .parameters()
 
         self.optimizer_A = torch.optim.Adam(self.A.parameters(), 
-          lr=A_lr, betas=(0.5, 0.999), weight_decay=decay)
+          lr=args.A_lr, betas=(0.5, 0.999), weight_decay=args.decay)
 
 
 

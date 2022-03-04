@@ -1,4 +1,4 @@
-
+# %%
 import os
 os.getcwd() 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -19,7 +19,43 @@ import logging
 import sys
 import transformers
 import time
+import argparse
 from torch.utils.tensorboard import SummaryWriter
+
+# %%
+parser = argparse.ArgumentParser("main")
+# parser.add_argument('--seed_', type=int, default=2, help='seed')
+
+# parser.add_argument('--max_length', type=int, default = 256, help='max length')
+
+parser.add_argument('--valid_num_points', type=int,             default = 1000 ,help='validation data number')
+parser.add_argument('--train_num_points', type=int,             default = 5000 ,help='train data number')
+
+parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
+parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
+parser.add_argument('--train_w_synthetic_num_points', type=int, default=4,      help='train_w_synthetic_num_points for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')#change to 1e-2 if needed
+
+
+parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
+parser.add_argument('--epochs', type=int,                       default=30,     help='num of training epochs')
+parser.add_argument('--pre_epochs', type=int,                   default=1,      help='train model W for x epoch first')
+parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
+
+parser.add_argument('--w_lr', type=float,                       default=1e-3,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
+parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
+parser.add_argument('--learning_rate_min', type=float,          default=0,      help='learning_rate_min')
+parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
+parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
+
+
+parser.add_argument('--traindata_loss_ratio', type=float,       default=0.8,    help='human translated data ratio')
+parser.add_argument('--syndata_loss_ratio', type=float,         default=0.2,    help='augmented dataset ratio')
+
+
+args = parser.parse_args(args=[])#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
 
 # %%
 now = time.strftime("%Y-%m-%d-%H_%M_%S",time.localtime(time.time())) 
@@ -31,6 +67,8 @@ fh = logging.FileHandler(os.path.join("./log/", now+'.txt'),'w',encoding = "UTF-
 fh.setFormatter(logging.Formatter(log_format))
 logging.getLogger().addHandler(fh)
 dataset = load_dataset('wmt14','de-en')
+
+logging.info(args)
 logging.info(dataset)
 logging.info(dataset['train'][5])
 
@@ -40,7 +78,7 @@ writer = SummaryWriter('tensorboard')
 
 # Setting the seeds
 np.random.seed(seed_)
-torch.cuda.set_device(0)
+torch.cuda.set_device(args.gpu)
 cudnn.benchmark = True
 torch.manual_seed(seed_)
 cudnn.enabled=True
@@ -58,8 +96,8 @@ tokenizer = T5Tokenizer.from_pretrained("t5-small")
 
 criterion = torch.nn.CrossEntropyLoss( reduction='none')#ignore_index = tokenizer.pad_token_id,
 # dataset = dataset.shuffle(seed=seed_)
-train = dataset['train']['translation'][:train_num_points]
-valid = dataset['validation']['translation'][:valid_num_points]
+train = dataset['train']['translation'][:args.train_num_points]
+valid = dataset['validation']['translation'][:args.valid_num_points]
 test = dataset['test']['translation']#[L_t+L_v:L_t+L_v+L_test]
 def preprocess(dat):
     for t in dat:
@@ -67,13 +105,13 @@ def preprocess(dat):
 preprocess(train)
 preprocess(valid)
 preprocess(test)
-num_batch = train_num_points//batch_size
-train = train[:batch_size*num_batch]
+num_batch = args.train_num_points//args.batch_size
+train = train[:args.batch_size*num_batch]
 logging.info("train len: %d",len(train))
-train_w_num_points_len = num_batch * train_w_num_points
-train_w_synthetic_num_points_len = num_batch * train_w_synthetic_num_points
-train_v_num_points_len = num_batch * train_v_num_points
-train_A_num_points_len = num_batch * train_A_num_points
+train_w_num_points_len = num_batch * args.train_w_num_points
+train_w_synthetic_num_points_len = num_batch * args.train_w_synthetic_num_points
+train_v_num_points_len = num_batch * args.train_v_num_points
+train_A_num_points_len = num_batch * args.train_A_num_points
 logging.info("train_w_num_points_len: %d",train_w_num_points_len)
 logging.info("train_w_synthetic_num_points_len: %d",train_w_synthetic_num_points_len)
 logging.info("train_v_num_points_len: %d",train_v_num_points_len)
@@ -88,13 +126,13 @@ logging.info(train[2])
 target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
 train_dataloader = DataLoader(train_data, sampler=RandomSampler(train_data), 
-                        batch_size=batch_size, pin_memory=True, num_workers=0)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=0)
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=RandomSampler(valid_data), 
-                        batch_size=batch_size, pin_memory=True, num_workers=0)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=0)
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=RandomSampler(test_data),
-                        batch_size=batch_size, pin_memory=True, num_workers=0)#, sampler=RandomSampler(test_data)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=0)#, sampler=RandomSampler(test_data)
 
 # %%
 
@@ -104,19 +142,19 @@ A = A.cuda()
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_w_in_main')
 model_w = model_w.cuda()
-w_optimizer = torch.optim.SGD(model_w.parameters(),w_lr,momentum=momentum,weight_decay=decay)
-scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(epochs), eta_min=learning_rate_min)
+w_optimizer = torch.optim.SGD(model_w.parameters(),args.w_lr,momentum=args.momentum,weight_decay=args.decay)
+scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
 
 model_v = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_v_in_main')
 model_v = model_v.cuda()
-v_optimizer = torch.optim.SGD(model_v.parameters(),v_lr,momentum=momentum,weight_decay=decay)
-scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(epochs), eta_min=learning_rate_min)
+v_optimizer = torch.optim.SGD(model_v.parameters(),args.v_lr,momentum=args.momentum,weight_decay=args.decay)
+scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
 
-architect = Architect(model_w, model_v,  A)
+architect = Architect(model_w, model_v,  A, args)
 
 # %%
 x = ['im going to eat now ','it is my nameit is']
@@ -178,10 +216,10 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
     v_trainloss_acc = 0
     w_trainloss_acc = 0
     counter = 0
-    wsize = train_w_num_points #now  train_x is [num of batch, datasize], so its seperate batch for the code below
-    synsize = train_w_synthetic_num_points
-    vsize = train_v_num_points 
-    Asize = train_A_num_points 
+    wsize = args.train_w_num_points #now  train_x is [num of batch, datasize], so its seperate batch for the code below
+    synsize = args.train_w_synthetic_num_points
+    vsize = args.train_v_num_points 
+    Asize = args.train_A_num_points 
     for step, batch in enumerate(train_dataloader):
         counter+=1
         batch_loss_w, batch_loss_v = 0, 0
@@ -195,7 +233,7 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
         input_w_attn = train_x_attn[:wsize]
         output_w = train_y[:wsize]
         output_w_attn = train_y_attn[:wsize]
-        attn_idx = attn_idx_list[train_w_num_points*step:(train_w_num_points*step+train_w_num_points)]
+        attn_idx = attn_idx_list[args.train_w_num_points*step:(args.train_w_num_points*step+args.train_w_num_points)]
            
         input_syn = train_x[wsize:wsize+synsize]
         input_syn_attn = train_x_attn[wsize:wsize+synsize]
@@ -211,11 +249,11 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
         output_A_v_attn = train_y_attn[wsize+synsize+vsize:wsize+synsize+vsize+Asize]
        
 
-        if epoch <= epochs:
+        if epoch <= args.epochs:
             architect.step(input_w,  output_w,input_w_attn, output_w_attn, w_optimizer, input_syn, input_syn_attn,input_A_v, input_A_v_attn, output_A_v, 
                 output_A_v_attn, v_optimizer, attn_idx, lr_w, lr_v)
 
-        if epoch <= epochs:
+        if epoch <= args.epochs:
             
             w_optimizer.zero_grad()
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
@@ -224,12 +262,12 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
             # nn.utils.clip_grad_norm(w_model.parameters(), grad_clip)
             w_optimizer.step()
             w_trainloss_acc+=loss_w.item()
-        if epoch >= pre_epochs:
+        if epoch >= args.pre_epochs:
             v_optimizer.zero_grad()
             loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
             loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
             
-            v_loss =  (syndata_loss_ratio*loss_aug+traindata_loss_ratio*loss)/num_batch
+            v_loss =  (args.syndata_loss_ratio*loss_aug+args.traindata_loss_ratio*loss)/num_batch
             
             batch_loss_v += v_loss.item()
             v_loss.backward()
@@ -238,8 +276,8 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
                 
             v_trainloss_acc+=v_loss.item()
             
-        if(step*batch_size%5==0):
-            logging.info(f"{step*batch_size*100/(train_num_points)}%")
+        if(step*args.batch_size%5==0):
+            logging.info(f"{step*args.batch_size*100/(args.train_num_points)}%")
     
     logging.info(str(("Attention Weights A : ", A.alpha)))
     return w_trainloss_acc,v_trainloss_acc
@@ -249,7 +287,7 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
 
 my_test(valid_dataloader,model_w,-1) #before train
 my_test(valid_dataloader,model_v,-1)  
-for epoch in range(epochs):
+for epoch in range(args.epochs):
 
     lr_w = scheduler_w.get_lr()[0]
     lr_v = scheduler_v.get_lr()[0]
@@ -278,12 +316,6 @@ for epoch in range(epochs):
         
     
 
-
-
-# %%
-
-
-# %%
 
 
 
