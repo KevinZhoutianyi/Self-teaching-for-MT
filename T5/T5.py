@@ -93,6 +93,8 @@ class T5(nn.Module):
         logits = logits[:,:,:32100]
        
         ## TODO: now we dont use ignoreindex
+        print(logits.view(-1, logits.size(-1)).shape)
+        print(target_ids.view(-1, target_ids.size(-1)).long().shape)
         loss = self._criterion(logits.view(-1, logits.size(-1)),target_ids.view(-1, target_ids.size(-1)).long())
         
         loss = loss.view(batch_size, -1).mean(dim = 1)
