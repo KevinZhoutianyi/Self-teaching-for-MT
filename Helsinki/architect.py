@@ -55,7 +55,7 @@ class Architect(object):
         # Unrolled model
         theta = _concat(self.w_model.parameters()).data
         logging.info(f"self.w_model.parameters(){self.w_model.parameters()}")
-        logging.info(f"w_model{w_model}")
+        logging.info(f"w_model{self.w_model}")
         dtheta = _concat(torch.autograd.grad(loss, self.w_model.parameters(), retain_graph = True )).data + self.w_decay*theta
         
         try:

@@ -39,7 +39,7 @@ def my_loss(input_ids, input_attn, target_ids, target_attn, model):
     
     with torch.no_grad():
         loss_vec = model.get_loss_vec(input_ids, input_attn, target_ids = target_ids, target_attn = target_attn)
-        loss = torch.sum(loss_vec,dim=0)
+        loss = torch.mean(loss_vec,dim=0)
     
     return loss
 

@@ -47,7 +47,7 @@ class Model(nn.Module):
         
         self._criterion = criterion
 
-        self.model = torch.load("BASE.pt").requires_grad_()
+        self.model = torch.load("HelsinkiBASE.pt").requires_grad_()
         
         # # print('Loading the pretrained model ....')
         # Load the pre-trained model trained for 

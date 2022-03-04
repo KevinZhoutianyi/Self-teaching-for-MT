@@ -32,8 +32,6 @@ class Embedding_(torch.nn.Module):
             return self.embedding(mask)
         
         assert mask.dtype == torch.float
-        # here the mask is the one-hot encoding
-        # print("embedding shape",self.embedding.weight[:32100,:].shape)
         return torch.matmul(mask, self.embedding.weight[:32100,:])
 
 
@@ -56,6 +54,9 @@ class T5(nn.Module):
         # # print('Done! Loaded the pretrained model ....')
         
         self.encoder = self.model.get_encoder()
+        # self.decoder = self.model.get_decoder()
+        # print(self.encoder.embed_tokens.weight)
+        # print(self.decoder.embed_tokens.weight)
 
         # embedding layer for both encoder and decoder since it is shared   
         self.embedding = Embedding_(self.encoder.embed_tokens).requires_grad_()#convert token to 512dimensions vector
@@ -78,7 +79,7 @@ class T5(nn.Module):
         # input is distribution , output is just category index
         
         # print(input_ids.shape)
-        # print(target_ids.shape)
+        batch_size = target_ids.shape[0]
         out_emb = self.embedding(target_ids)/self.enc_emb_scale
         inp_emb = self.embedding(input_ids)/self.enc_emb_scale
 
@@ -87,16 +88,14 @@ class T5(nn.Module):
         #  is embedding sharing for input and out? cuz they are in different language:  yes
         logits = self.model(inputs_embeds = inp_emb, attention_mask = input_attn, decoder_inputs_embeds   = out_emb, decoder_attention_mask = target_attn, return_dict=True).logits
 
-        # print(logits.shape)
-        
-   
-        #logits is ditribution target is onehot
+     
         logits = logits[:,:,:32100]
        
         ## TODO: now we dont use ignoreindex
         loss = self._criterion(logits.view(-1, logits.size(-1)),target_ids.view(-1, target_ids.size(-1)))
-        # print("logits",logits.view(-1, logits.size(-1)).shape,"tar",target_ids.view(-1).shape)
-        # print("T5 loss", loss.shape)
+        
+        loss = loss.view(batch_size, -1).mean(dim = 1)
+        loss = torch.mean(loss)
         return loss
 
 
@@ -136,14 +135,16 @@ class T5(nn.Module):
         return loss_vec
 
     # used for generation of summaries from articles
-    def generate(self, input_ids, num_beams = 2, max_length=article_length):
+    def generate(self, input_ids, num_beams = 4, max_length=max_length):
         
         # beam search
         # print("start of : generate")
-        output_ids = self.model.generate( input_ids = input_ids, num_beams = num_beams, early_stopping = True, max_length = max_length, no_repeat_ngram_size = 2, repetition_penalty = 1.2)
+        
+        output_ids = self.model.generate( input_ids = input_ids, num_beams = num_beams, early_stopping = True, max_length = max_length, no_repeat_ngram_size = 2, min_length=0,repetition_penalty = 0.8)
+        
         
         ## sampling with top_p
-        #summary_ids = self.model.generate( input_ids = input_ids, num_beams = 1, max_length = max_length, top_p = 0.95, top_k = 50, no_repeat_ngram_size = 2, repetition_penalty = 1.2)
+        # output_ids = self.model.generate( input_ids = input_ids, num_beams = 1, max_length = max_length, top_p = 0.95, top_k = 50, no_repeat_ngram_size = 2, repetition_penalty = 1.2)
 
         # print("end of : generate")
         return output_ids

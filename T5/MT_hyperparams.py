@@ -1,26 +1,34 @@
 import numpy as np
 import torch
 
-seed_ = 1
-
-summary_length = 100
-
-article_length = 500
-valid_num_points = 200
-train_num_points = 1000
-test_num_points = 500
+seed_ = 2
+target_language = 'de'
 
 
-batch_size = 5
+max_length = 256
+valid_num_points = 1000
+train_num_points = 5000
+test_num_points = 50
+
+batch_size = 16
+train_w_num_points = 4
+train_w_synthetic_num_points = 4
+train_v_num_points = 4
+train_A_num_points = 4
+
+
 epochs = 500
 ux_ratio = 0.3
 learning_rate_min =0
 
-
+pre_epochs = 1
 w_lr = 0.001
-v_lr = 0.0001
-A_lr = 0.0005
-begin_epoch = 0
-momentum = 0.5
+v_lr = 0.001
+A_lr = 0.0001
+begin_epoch = 1
+momentum = 0.7
 grad_clip =  5
 decay = 1e-3
+
+traindata_loss_ratio = 0.8
+syndata_loss_ratio = 0.2

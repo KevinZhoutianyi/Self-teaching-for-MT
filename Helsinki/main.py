@@ -183,7 +183,7 @@ def my_train(epoch, train_dataloader, valid_dataloader, w_model, v_model, archit
             # logging.info(f"loss_w (train):{loss_w}")
             batch_loss_w += loss_w.item()
             loss_w.backward()
-            nn.utils.clip_grad_norm(w_model.parameters(), grad_clip)
+            # nn.utils.clip_grad_norm(w_model.parameters(), grad_clip)
             w_optimizer.step()
 
 
@@ -193,7 +193,7 @@ def my_train(epoch, train_dataloader, valid_dataloader, w_model, v_model, archit
             # logging.info(f"v_loss (train):{v_loss}")
             batch_loss_v += v_loss.item()
             v_loss.backward()
-            nn.utils.clip_grad_norm(v_model.parameters(), grad_clip)
+            # nn.utils.clip_grad_norm(v_model.parameters(), grad_clip)
             v_optimizer.step()     
                 
             v_trainloss_acc+=v_loss.item()

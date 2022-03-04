@@ -11,7 +11,7 @@ train_num_points = 1000
 test_num_points = 500
 
 
-batch_size = 5
+batch_size = 2
 epochs = 500
 ux_ratio = 0.3
 learning_rate_min =0
