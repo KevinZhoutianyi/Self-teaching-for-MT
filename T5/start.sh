@@ -3,4 +3,4 @@ pip install transformers
 pip install datasets
 pip install sacrebleu==1.5.1
 mkdir log
-python main.py
+python main.py 
