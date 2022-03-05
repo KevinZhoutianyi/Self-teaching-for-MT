@@ -55,7 +55,7 @@ parser.add_argument('--traindata_loss_ratio', type=float,       default=0.8,    
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.2,    help='augmented dataset ratio')
 
 
-args = parser.parse_args(args=[])#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
+args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
 
 # %%
 parser = argparse.ArgumentParser("main")
