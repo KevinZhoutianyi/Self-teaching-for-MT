@@ -28,8 +28,8 @@ parser = argparse.ArgumentParser("main")
 
 # parser.add_argument('--max_length', type=int, default = 256, help='max length')
 
-parser.add_argument('--valid_num_points', type=int,             default = 1000 ,help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 5000 ,help='train data number')
+parser.add_argument('--valid_num_points', type=int,             default = 100 ,help='validation data number')
+parser.add_argument('--train_num_points', type=int,             default = 500 ,help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
@@ -55,7 +55,45 @@ parser.add_argument('--traindata_loss_ratio', type=float,       default=0.8,    
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.2,    help='augmented dataset ratio')
 
 
-args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
+args = parser.parse_args(args=[])#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
+
+# %%
+parser = argparse.ArgumentParser("main")
+# parser.add_argument('--seed_', type=int, default=2, help='seed')
+
+# parser.add_argument('--max_length', type=int, default = 256, help='max length')
+
+parser.add_argument('--valid_num_points', type=int,             default = 100 ,help='validation data number')
+parser.add_argument('--train_num_points', type=int,             default = 500 ,help='train data number')
+
+parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
+parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
+parser.add_argument('--train_w_synthetic_num_points', type=int, default=4,      help='train_w_synthetic_num_points for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')#change to 1e-2 if needed
+
+
+parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
+parser.add_argument('--epochs', type=int,                       default=30,     help='num of training epochs')
+parser.add_argument('--pre_epochs', type=int,                   default=1,      help='train model W for x epoch first')
+parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
+
+parser.add_argument('--w_lr', type=float,                       default=1e-3,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
+parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
+parser.add_argument('--learning_rate_min', type=float,          default=0,      help='learning_rate_min')
+parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
+parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
+
+
+parser.add_argument('--traindata_loss_ratio', type=float,       default=0.8,    help='human translated data ratio')
+parser.add_argument('--syndata_loss_ratio', type=float,         default=0.2,    help='augmented dataset ratio')
+
+parser.add_argument('--valid_begin', type=int,                  default=0,    help='whether valid before train')
+
+
+
+args = parser.parse_args(args=['--train_num_points', '100','--valid_num_points', '100'])#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
 
 # %%
 now = time.strftime("%Y-%m-%d-%H_%M_%S",time.localtime(time.time())) 
@@ -284,9 +322,9 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
 
 
 # %%
-
-my_test(valid_dataloader,model_w,-1) #before train
-my_test(valid_dataloader,model_v,-1)  
+if(args.valid_begin==1):
+    my_test(valid_dataloader,model_w,-1) #before train
+    my_test(valid_dataloader,model_v,-1)  
 for epoch in range(args.epochs):
 
     lr_w = scheduler_w.get_lr()[0]
@@ -316,6 +354,9 @@ for epoch in range(args.epochs):
         
     
 
+
+
+# %%
 
 
 
