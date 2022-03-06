@@ -39,7 +39,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
-parser.add_argument('--epochs', type=int,                       default=30,     help='num of training epochs')
+parser.add_argument('--epochs', type=int,                       default=5,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=1,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
 
@@ -174,7 +174,8 @@ def my_test(test_dataloader,model,epoch):
     acc = 0
     counter = 0
     model.eval()
-    metric =  load_metric('sacrebleu')
+    metric_sacrebleu =  load_metric('sacrebleu')
+    metric_bleu =  load_metric('bleu')
     for step, batch in enumerate(test_dataloader):
         test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()
         n = test_dataloaderx.size(0)   
@@ -189,13 +190,16 @@ def my_test(test_dataloader,model,epoch):
                 pred_decoded = tokenizer.batch_decode(pre,skip_special_tokens=True)
                 label_decoded =  tokenizer.batch_decode(test_dataloadery,skip_special_tokens=True)
                 
-                pred_ = [x.lower().replace('.', '')  for x in pred_decoded]
-                label_ = [[x.lower().replace('.', '')] for x in label_decoded]
+                pred_str = [x.lower().replace('.', '')  for x in pred_decoded]
+                label_str = [[x.lower().replace('.', '')] for x in label_decoded]
+                pred_list = [x.lower().replace('.', '').split()  for x in pred_decoded]
+                label_list = [[x.lower().replace('.', '').split()] for x in label_decoded]
                 if  step%100==0:
                     logging.info(f'x_decoded[:2]:{x_decoded[:2]}')
                     logging.info(f'pred_decoded[:2]:{pred_decoded[:2]}')
                     logging.info(f'label_decoded[:2]:{label_decoded[:2]}')
-                metric.add_batch(predictions=pred_, references=label_)
+                metric_sacrebleu.add_batch(predictions=pred_str, references=label_str)
+                metric_bleu.add_batch(predictions=pred_list, references=label_list)
                 
                
             except Exception as ex:
@@ -205,11 +209,14 @@ def my_test(test_dataloader,model,epoch):
         
         acc+= ls
         counter+= 1
-    final_score = metric.compute()
-    logging.info('%s sacreBLEU : %f',model.name,final_score['score'])
+    sacrebleu_score = metric_sacrebleu.compute()
+    bleu_score = metric_bleu.compute()
+    logging.info('%s sacreBLEU : %f',model.name,sacrebleu_score['score'])
+    logging.info('%s BLEU : %f',model.name,bleu_score['bleu'])
     logging.info('%s test loss : %f',model.name,acc/(counter*n))
     writer.add_scalar("MT/"+model.name+"/test_loss", acc/counter, global_step=epoch)
-    writer.add_scalar("MT/"+model.name+"/sacreBLEU",final_score['score'], global_step=epoch)
+    writer.add_scalar("MT/"+model.name+"/sacreBLEU",sacrebleu_score['score'], global_step=epoch)
+    writer.add_scalar("MT/"+model.name+"/BLEU",bleu_score['bleu'], global_step=epoch)
     model.train()
         
 
@@ -261,7 +268,7 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
             batch_loss_w += loss_w.item()
             loss_w.backward()
-            # nn.utils.clip_grad_norm(w_model.parameters(), grad_clip)
+            nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
             w_optimizer.step()
             w_trainloss_acc+=loss_w.item()
         if epoch >= args.pre_epochs:
@@ -273,7 +280,7 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
             
             batch_loss_v += v_loss.item()
             v_loss.backward()
-            # nn.utils.clip_grad_norm(v_model.parameters(), grad_clip)
+            nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
             v_optimizer.step()     
                 
             v_trainloss_acc+=v_loss.item()
