@@ -21,12 +21,16 @@ import transformers
 import time
 import argparse
 from torch.utils.tensorboard import SummaryWriter
+import string
 
 # %%
 parser = argparse.ArgumentParser("main")
 # parser.add_argument('--seed_', type=int, default=2, help='seed')
 
 # parser.add_argument('--max_length', type=int, default = 256, help='max length')
+
+
+
 
 parser.add_argument('--valid_num_points', type=int,             default = 100 ,help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 500 ,help='train data number')
@@ -39,7 +43,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
-parser.add_argument('--epochs', type=int,                       default=5,     help='num of training epochs')
+parser.add_argument('--epochs', type=int,                       default=20,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=1,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
 
@@ -54,7 +58,8 @@ parser.add_argument('--momentum', type=float,                   default=0.7,    
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.8,    help='human translated data ratio')
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.2,    help='augmented dataset ratio')
 
-parser.add_argument('--valid_begin', type=int,                  default=0,    help='whether valid before train')
+parser.add_argument('--valid_begin', type=int,                  default=1,    help='whether valid before train')
+parser.add_argument('--train_A', type=int,                      default = 0 ,   help='whether train A')
 
 
 args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
@@ -88,13 +93,13 @@ torch.cuda.manual_seed(seed_)
 
 # %%
 
-pretrained  =  T5ForConditionalGeneration.from_pretrained("t5-small")
+pretrained  =  T5ForConditionalGeneration.from_pretrained("t5-base")
 torch.save(pretrained,'T5BASE.pt')
 
 # %%
 # Load the tokenizer.
 import random
-tokenizer = T5Tokenizer.from_pretrained("t5-small")
+tokenizer = T5Tokenizer.from_pretrained("t5-base")
 
 criterion = torch.nn.CrossEntropyLoss( reduction='none')#ignore_index = tokenizer.pad_token_id,
 # dataset = dataset.shuffle(seed=seed_)
@@ -130,10 +135,10 @@ train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our 
 train_dataloader = DataLoader(train_data, sampler=RandomSampler(train_data), 
                         batch_size=args.batch_size, pin_memory=True, num_workers=0)
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
-valid_dataloader = DataLoader(valid_data, sampler=RandomSampler(valid_data), 
+valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
                         batch_size=args.batch_size, pin_memory=True, num_workers=0)
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
-test_dataloader = DataLoader(test_data, sampler=RandomSampler(test_data),
+test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
                         batch_size=args.batch_size, pin_memory=True, num_workers=0)#, sampler=RandomSampler(test_data)
 
 # %%
@@ -159,13 +164,38 @@ scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(arg
 architect = Architect(model_w, model_v,  A, args)
 
 # %%
-x = ['im going to eat now ','it is my nameit is']
-for index,i in enumerate(x) :
-    x[index] = 'translate Enlgish to German:' + x[index]
-y= tokenize(x, tokenizer, max_length = max_length)
-input = y[0].cuda()
-output  = model_v.generate(input,max_length=max_length)
-tokenizer.batch_decode(output)
+# # x = ['im going to eat now ','it is my nameit is']
+# # for index,i in enumerate(x) :
+# #     x[index] = 'translate Enlgish to German:' + x[index]
+# # y= tokenize(x, tokenizer, max_length = max_length)
+# # input = y[0].cuda()
+# # output  = model_v.generate(input,max_length=max_length)
+# # tokenizer.batch_decode(output)
+
+
+# metric_bleu =  load_metric('sacrebleu')
+# predlist = ['Eine republikanische Strategie zur Bekämpfung der Wiederwahl Obamas','Die republikanischen Führer rechtfertigten ihre Politik mit der Notwendigkeit , Wahlbetrug zu bekämpfen .']
+# targetlist = ['Eine republikanische Strategie um der Wiederwahl von Obama entgegenzutreten','Die Führungskräfte der Republikaner rechtfertigen ihre Politik mit der Notwendigkeit , den Wahlbetrug zu bekämpfen']
+# predlist = ['Eine republikanische Strategie zur Bekämpfung der Wiederwahl Obamas', 'Die republikanischen Führer rechtfertigten ihre Politik mit der Notwendigkeit, Wahlbetrug zu bekämpfen.']
+# targetlist =['Eine republikanische Strategie, um der Wiederwahl von Obama entgegenzutreten', 'Die Führungskräfte der Republikaner rechtfertigen ihre Politik mit der Notwendigkeit, den Wahlbetrug zu bekämpfen.']
+# 
+# predlist = [x.lower().translate( str.maketrans('', '', string.punctuation))  for x in predlist]
+# targetlist = [[x.lower().translate( str.maketrans('', '', string.punctuation))] for x in targetlist]
+# print(predlist)
+# print(targetlist)
+# metric_bleu.add_batch(predictions=predlist, references=targetlist)
+
+# sacrebleu_score = metric_bleu.compute()
+# print(sacrebleu_score)
+# from nltk.translate import bleu
+# from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+# def bleu(reference_captions, predicted_caption):
+#     return 100 * sentence_bleu(reference_captions, predicted_caption,
+#                                weights=(0.25, 0.25, 0.25,0.25), smoothing_function=SmoothingFunction().method1)
+# x = bleu(targetlist[1],predlist[1])+bleu(targetlist[0],predlist[0])
+# print(x/2)
+                
+                
 
 # %%
 
@@ -176,12 +206,14 @@ def my_test(test_dataloader,model,epoch):
     model.eval()
     metric_sacrebleu =  load_metric('sacrebleu')
     metric_bleu =  load_metric('bleu')
+    wsize = args.train_w_num_points
     for step, batch in enumerate(test_dataloader):
-        test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()
+        
+        test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()[:wsize]
         n = test_dataloaderx.size(0)   
-        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).cuda()
-        test_dataloadery = Variable(batch[2], requires_grad=False).cuda()
-        test_dataloadery_attn = Variable(batch[3], requires_grad=False).cuda()
+        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).cuda()[:wsize]
+        test_dataloadery = Variable(batch[2], requires_grad=False).cuda()[:wsize]
+        test_dataloadery_attn = Variable(batch[3], requires_grad=False).cuda()[:wsize]
         ls = my_loss(test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,model)
         with torch.no_grad():
             pre = model.generate(test_dataloaderx)
@@ -190,10 +222,14 @@ def my_test(test_dataloader,model,epoch):
                 pred_decoded = tokenizer.batch_decode(pre,skip_special_tokens=True)
                 label_decoded =  tokenizer.batch_decode(test_dataloadery,skip_special_tokens=True)
                 
-                pred_str = [x.lower().replace('.', '')  for x in pred_decoded]
-                label_str = [[x.lower().replace('.', '')] for x in label_decoded]
-                pred_list = [x.lower().replace('.', '').split()  for x in pred_decoded]
-                label_list = [[x.lower().replace('.', '').split()] for x in label_decoded]
+                pred_str = [x.replace('.', '')  for x in pred_decoded]
+                label_str = [[x.replace('.', '')] for x in label_decoded]
+                pred_list = [x.replace('.', '').split()  for x in pred_decoded]
+                label_list = [[x.replace('.', '').split()] for x in label_decoded]
+                #pred_str = [x.translate( str.maketrans('', '', string.punctuation)) for x in pred_decoded] 
+                # label_str = [[x.translate( str.maketrans('', '', string.punctuation))] for x in label_decoded]
+                # pred_list = [x.translate( str.maketrans('', '', string.punctuation)).split()  for x in pred_decoded]#TODO:improve
+                # label_list = [[x.translate( str.maketrans('', '', string.punctuation)).split()] for x in label_decoded]#TODO:improve
                 if  step%100==0:
                     logging.info(f'x_decoded[:2]:{x_decoded[:2]}')
                     logging.info(f'pred_decoded[:2]:{pred_decoded[:2]}')
@@ -258,7 +294,7 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
         output_A_v_attn = train_y_attn[wsize+synsize+vsize:wsize+synsize+vsize+Asize]
        
 
-        if epoch <= args.epochs:
+        if (epoch <= args.epochs) and (args.train_A == 1):
             architect.step(input_w,  output_w,input_w_attn, output_w_attn, w_optimizer, input_syn, input_syn_attn,input_A_v, input_A_v_attn, output_A_v, 
                 output_A_v_attn, v_optimizer, attn_idx, lr_w, lr_v)
 
@@ -268,10 +304,10 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
             batch_loss_w += loss_w.item()
             loss_w.backward()
-            nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
+            # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
             w_optimizer.step()
             w_trainloss_acc+=loss_w.item()
-        if epoch >= args.pre_epochs:
+        if epoch >= args.pre_epochs and epoch <= args.epochs:
             v_optimizer.zero_grad()
             loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
             loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
@@ -280,7 +316,7 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
             
             batch_loss_v += v_loss.item()
             v_loss.backward()
-            nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+            # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
             v_optimizer.step()     
                 
             v_trainloss_acc+=v_loss.item()
@@ -294,8 +330,8 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
 
 # %%
 if(args.valid_begin==1):
-    my_test(valid_dataloader,model_w,-1) #before train
-    my_test(valid_dataloader,model_v,-1)  
+    my_test(train_dataloader,model_w,-1) #before train
+    my_test(train_dataloader,model_v,-1)  
 for epoch in range(args.epochs):
 
     lr_w = scheduler_w.get_lr()[0]
@@ -314,8 +350,8 @@ for epoch in range(args.epochs):
     logging.info(f"w_train_loss:{w_train_loss},v_train_loss:{v_train_loss}")
 
     
-    my_test(valid_dataloader,model_w,epoch) 
-    my_test(valid_dataloader,model_v,epoch)  
+    my_test(train_dataloader,model_w,epoch) 
+    my_test(train_dataloader,model_v,epoch)  
 
     torch.save(model_v,'./model/'+now+'model_v.pt')
     torch.save(model_v,'./model/'+now+'model_w.pt')
@@ -325,9 +361,6 @@ for epoch in range(args.epochs):
         
     
 
-
-
-# %%
 
 
 
