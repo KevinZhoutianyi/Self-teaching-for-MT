@@ -132,7 +132,7 @@ logging.info(train[2])
 # %%
 target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
-train_dataloader = DataLoader(train_data, sampler=RandomSampler(train_data), 
+train_dataloader = DataLoader(train_data, sampler=SequentialSampler(train_data), 
                         batch_size=args.batch_size, pin_memory=True, num_workers=0)
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
