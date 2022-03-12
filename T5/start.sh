@@ -5,5 +5,7 @@ pip install sacrebleu==1.5.1
 mkdir log
 mkdir model
 mkdir tensorboard
+rm -f ./log/*.txt
+rm -f ./tensorboard/*
 python main.py --valid_num_points 200 --train_num_points 300 --valid_begin 1
 

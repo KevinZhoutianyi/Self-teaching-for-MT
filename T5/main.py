@@ -33,7 +33,7 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = 100 ,help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 600 ,help='train data number')
+parser.add_argument('--train_num_points', type=int,             default = 200 ,help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
@@ -47,8 +47,8 @@ parser.add_argument('--epochs', type=int,                       default=50,     
 parser.add_argument('--pre_epochs', type=int,                   default=1,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
 
-parser.add_argument('--w_lr', type=float,                       default=1e-3,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=5e-3,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=5e-3,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-5,      help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -150,14 +150,16 @@ A = A.cuda()
 model_w = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_w_in_main')
 model_w = model_w.cuda()
 w_optimizer = torch.optim.SGD(model_w.parameters(),args.w_lr,momentum=args.momentum,weight_decay=args.decay)
-scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
+scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0.5)
+# scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
 
 model_v = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_v_in_main')
 model_v = model_v.cuda()
 v_optimizer = torch.optim.SGD(model_v.parameters(),args.v_lr,momentum=args.momentum,weight_decay=args.decay)
-scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
+scheduler_w  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0.5)
+# scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
 
@@ -248,9 +250,9 @@ def my_test(test_dataloader,model,epoch):
     logging.info('%s sacreBLEU : %f',model.name,sacrebleu_score['score'])
     logging.info('%s BLEU : %f',model.name,bleu_score['bleu'])
     logging.info('%s test loss : %f',model.name,acc/(counter))
-    writer.add_scalar("MT/"+model.name+"/test_loss", acc/counter, global_step=epoch)
-    writer.add_scalar("MT/"+model.name+"/sacreBLEU",sacrebleu_score['score'], global_step=epoch)
-    writer.add_scalar("MT/"+model.name+"/BLEU",bleu_score['bleu'], global_step=epoch)
+    writer.add_scalar(model.name+"/test_loss", acc/counter, global_step=epoch)
+    writer.add_scalar(model.name+"/sacreBLEU",sacrebleu_score['score'], global_step=epoch)
+    writer.add_scalar(model.name+"/BLEU",bleu_score['bleu'], global_step=epoch)
     model.train()
         
 
