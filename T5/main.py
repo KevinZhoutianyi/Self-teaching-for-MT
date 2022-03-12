@@ -158,7 +158,7 @@ scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0
 model_v = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_v_in_main')
 model_v = model_v.cuda()
 v_optimizer = torch.optim.SGD(model_v.parameters(),args.v_lr,momentum=args.momentum,weight_decay=args.decay)
-scheduler_w  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0.5)
+scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0.5)
 # scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
