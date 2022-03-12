@@ -33,7 +33,7 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = 100 ,help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 500 ,help='train data number')
+parser.add_argument('--train_num_points', type=int,             default = 600 ,help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
@@ -43,14 +43,14 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
-parser.add_argument('--epochs', type=int,                       default=20,     help='num of training epochs')
+parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=1,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
 
 parser.add_argument('--w_lr', type=float,                       default=1e-3,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
-parser.add_argument('--learning_rate_min', type=float,          default=0,      help='learning_rate_min')
+parser.add_argument('--learning_rate_min', type=float,          default=1e-5,      help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
 
@@ -208,13 +208,13 @@ def my_test(test_dataloader,model,epoch):
     metric_bleu =  load_metric('bleu')
     wsize = args.train_w_num_points
     for step, batch in enumerate(test_dataloader):
-        
         test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()[:wsize]
-        n = test_dataloaderx.size(0)   
         test_dataloaderx_attn = Variable(batch[1], requires_grad=False).cuda()[:wsize]
         test_dataloadery = Variable(batch[2], requires_grad=False).cuda()[:wsize]
         test_dataloadery_attn = Variable(batch[3], requires_grad=False).cuda()[:wsize]
         ls = my_loss(test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,model)
+        acc+= ls
+        counter+= 1
         with torch.no_grad():
             pre = model.generate(test_dataloaderx)
             try:
@@ -243,13 +243,11 @@ def my_test(test_dataloader,model,epoch):
                 raise Exception(ex)
         # logging.info(f"loss:{ls}")
         
-        acc+= ls
-        counter+= 1
     sacrebleu_score = metric_sacrebleu.compute()
     bleu_score = metric_bleu.compute()
     logging.info('%s sacreBLEU : %f',model.name,sacrebleu_score['score'])
     logging.info('%s BLEU : %f',model.name,bleu_score['bleu'])
-    logging.info('%s test loss : %f',model.name,acc/(counter*n))
+    logging.info('%s test loss : %f',model.name,acc/(counter))
     writer.add_scalar("MT/"+model.name+"/test_loss", acc/counter, global_step=epoch)
     writer.add_scalar("MT/"+model.name+"/sacreBLEU",sacrebleu_score['score'], global_step=epoch)
     writer.add_scalar("MT/"+model.name+"/BLEU",bleu_score['bleu'], global_step=epoch)
@@ -275,6 +273,7 @@ def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimize
         train_y_attn = Variable(batch[3], requires_grad=False).cuda() 
 
         input_w = train_x[:wsize]
+        
         input_w_attn = train_x_attn[:wsize]
         output_w = train_y[:wsize]
         output_w_attn = train_y_attn[:wsize]
