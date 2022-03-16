@@ -32,14 +32,14 @@ parser = argparse.ArgumentParser("main")
 
 
 
-parser.add_argument('--valid_num_points', type=int,             default = 100 , help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 400 , help='train data number')
+parser.add_argument('--valid_num_points', type=int,             default = 100 ,help='validation data number')
+parser.add_argument('--train_num_points', type=int,             default = 200 ,help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
 parser.add_argument('--train_w_synthetic_num_points', type=int, default=4,      help='train_w_synthetic_num_points for each batch')
 parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')#change to 1e-2 if needed
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
@@ -50,16 +50,16 @@ parser.add_argument('--grad_clip', type=float,                  default=5,      
 parser.add_argument('--w_lr', type=float,                       default=5e-3,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=5e-3,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
-parser.add_argument('--learning_rate_min', type=float,          default=1e-5,   help='learning_rate_min')
+parser.add_argument('--learning_rate_min', type=float,          default=1e-5,      help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
 
 
-parser.add_argument('--traindata_loss_ratio', type=float,       default=0.9,    help='human translated data ratio')
-parser.add_argument('--syndata_loss_ratio', type=float,         default=0.1,    help='augmented dataset ratio')
+parser.add_argument('--traindata_loss_ratio', type=float,       default=0.8,    help='human translated data ratio')
+parser.add_argument('--syndata_loss_ratio', type=float,         default=0.2,    help='augmented dataset ratio')
 
 parser.add_argument('--valid_begin', type=int,                  default=1,    help='whether valid before train')
-parser.add_argument('--train_A', type=int,                      default= 0 ,   help='whether train A')
+parser.add_argument('--train_A', type=int,                      default = 0 ,   help='whether train A')
 
 
 args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
@@ -202,22 +202,22 @@ architect = Architect(model_w, model_v,  A, args)
 # %%
 
 from nltk.translate.bleu_score import sentence_bleu,corpus_bleu
-def my_test(_dataloader,model,epoch):
+def my_test(test_dataloader,model,epoch):
     acc = 0
     counter = 0
     model.eval()
     metric_sacrebleu =  load_metric('sacrebleu')
     metric_bleu =  load_metric('bleu')
     wsize = args.train_w_num_points
-    for step, batch in enumerate(_dataloader):
-        test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()
-        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).cuda()
-        test_dataloadery = Variable(batch[2], requires_grad=False).cuda()
-        test_dataloadery_attn = Variable(batch[3], requires_grad=False).cuda()
+    for step, batch in enumerate(test_dataloader):
+        test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()[:wsize]
+        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).cuda()[:wsize]
+        test_dataloadery = Variable(batch[2], requires_grad=False).cuda()[:wsize]
+        test_dataloadery_attn = Variable(batch[3], requires_grad=False).cuda()[:wsize]
+        ls = my_loss(test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,model)
+        acc+= ls
+        counter+= 1
         with torch.no_grad():
-            ls = my_loss(test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,model)
-            acc+= ls
-            counter+= 1
             pre = model.generate(test_dataloaderx)
             try:
                 x_decoded = tokenizer.batch_decode(test_dataloaderx,skip_special_tokens=True)
@@ -244,6 +244,7 @@ def my_test(_dataloader,model,epoch):
                 print(tokenizer.batch_decode(pre),[[x] for x in tokenizer.batch_decode(test_dataloadery)])
                 raise Exception(ex)
         # logging.info(f"loss:{ls}")
+        
     sacrebleu_score = metric_sacrebleu.compute()
     bleu_score = metric_bleu.compute()
     logging.info('%s sacreBLEU : %f',model.name,sacrebleu_score['score'])
@@ -256,8 +257,7 @@ def my_test(_dataloader,model,epoch):
         
 
 # %%
-def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_optimizer, lr_w, lr_v, ):
-    
+def my_train(epoch, train_dataloader, w_model, v_model, architect, A, w_optimizer, v_optimizer, lr_w, lr_v, ):
     v_trainloss_acc = 0
     w_trainloss_acc = 0
     counter = 0
@@ -265,7 +265,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     synsize = args.train_w_synthetic_num_points
     vsize = args.train_v_num_points 
     Asize = args.train_A_num_points 
-    for step, batch in enumerate(_dataloader):
+    for step, batch in enumerate(train_dataloader):
         counter+=1
         batch_loss_w, batch_loss_v = 0, 0
         
@@ -299,7 +299,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             architect.step(input_w,  output_w,input_w_attn, output_w_attn, w_optimizer, input_syn, input_syn_attn,input_A_v, input_A_v_attn, output_A_v, 
                 output_A_v_attn, v_optimizer, attn_idx, lr_w, lr_v)
 
-        if  epoch <= args.epochs:
+        if epoch <= args.epochs:
             
             w_optimizer.zero_grad()
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
@@ -308,9 +308,6 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
             w_optimizer.step()
             w_trainloss_acc+=loss_w.item()
-        
-                
-
         if epoch >= args.pre_epochs and epoch <= args.epochs:
             v_optimizer.zero_grad()
             loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
@@ -327,15 +324,15 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             
         if(step*args.batch_size%5==0):
             logging.info(f"{step*args.batch_size*100/(args.train_num_points)}%")
-    logging.info(str(("Attention Weights A : ", A.alpha)))
     
+    logging.info(str(("Attention Weights A : ", A.alpha)))
     return w_trainloss_acc,v_trainloss_acc
 
 
 # %%
 if(args.valid_begin==1):
-    my_test(valid_dataloader,model_w,-1) #before train
-    my_test(valid_dataloader,model_v,-1)  
+    my_test(train_dataloader,model_w,-1) #before train
+    my_test(train_dataloader,model_v,-1)  
 for epoch in range(args.epochs):
 
     lr_w = scheduler_w.get_lr()[0]
@@ -354,21 +351,17 @@ for epoch in range(args.epochs):
     logging.info(f"w_train_loss:{w_train_loss},v_train_loss:{v_train_loss}")
 
     
-    my_test(valid_dataloader,model_w,epoch) 
-    my_test(valid_dataloader,model_v,epoch)  
+    my_test(train_dataloader,model_w,epoch) 
+    my_test(train_dataloader,model_v,epoch)  
 
-    if(epoch%5==0 and epoch!=0):
-        torch.save(model_v,'./model/'+now+'model_v.pt')
-        torch.save(model_v,'./model/'+now+'model_w.pt')
+    torch.save(model_v,'./model/'+now+'model_v.pt')
+    torch.save(model_v,'./model/'+now+'model_w.pt')
      
    
    
         
     
 
-
-
-# %%
 
 
 

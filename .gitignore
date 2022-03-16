@@ -11,6 +11,11 @@ T5/log/
 T5/tensorboard/
 T5/model/
 T5/*.pt
+BART/__pycache__/
+BART/log/
+BART/tensorboard/
+BART/model/
+BART/*.pt
 
 
 # C extensions

@@ -26,7 +26,6 @@ def CTG_loss(input_ids, input_attn, target_ids, target_attn, attn_idx, attention
     attention_weights = attention_parameters(attn_idx)
     # logging.info(f"attentionweight:{attention_weights}")
     loss_vec = model.get_loss_vec(input_ids, input_attn, target_ids = target_ids, target_attn = target_attn)
-  
     loss = torch.dot(attention_weights, loss_vec)
     scaling_factor = 1
     
@@ -38,7 +37,6 @@ def my_loss(input_ids, input_attn, target_ids, target_attn, model):
     
     with torch.no_grad():
         loss_vec = model.get_loss_vec(input_ids, input_attn, target_ids = target_ids, target_attn = target_attn)
-        
         loss = torch.mean(loss_vec,dim=0)
     
     return loss
