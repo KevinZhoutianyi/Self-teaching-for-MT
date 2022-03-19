@@ -1,3 +1,4 @@
+from cProfile import label
 import os
 import random
 import numpy as np
@@ -81,22 +82,25 @@ class T5(nn.Module):
         
         # print(input_ids.shape)
         batch_size = target_ids.shape[0]
+        print('target_ids',target_ids)
+        print('target_ids',target_ids.shape)
         out_emb = self.embedding(target_ids)/self.enc_emb_scale
         inp_emb = self.embedding(input_ids)/self.enc_emb_scale
 
         # print(out_emb.shape)
         # print(inp_emb.shape)
         #  is embedding sharing for input and out? cuz they are in different language:  yes
-        logits = self.model(inputs_embeds = inp_emb, attention_mask = input_attn, decoder_inputs_embeds   = out_emb, decoder_attention_mask = target_attn, return_dict=True).logits
-
+        temp = self.model(inputs_embeds = inp_emb, attention_mask = input_attn,labels= target_ids.float(), return_dict=True)
+        loss = temp.loss
      
-        logits = logits[:,:,:32100]
+        # logits = logits[:,:,:32100]
        
-        ## TODO: now we dont use ignoreindex
-        loss = self._criterion(logits.view(-1, logits.size(-1)),target_ids.view(-1, target_ids.size(-1)))
+        # ## TODO: now we dont use ignoreindex
+        # loss = self._criterion(logits.view(-1, logits.size(-1)),target_ids.view(-1, target_ids.size(-1)))
         
-        loss = loss.view(batch_size, -1).mean(dim = 1)
-        loss = torch.mean(loss)
+        # loss = loss.view(batch_size, -1).mean(dim = 1)
+        # loss = torch.mean(loss)
+        print(temp)
         return loss
 
 
@@ -113,27 +117,28 @@ class T5(nn.Module):
         # return loss
     def get_loss_vec(self, input_ids, input_attn, target_ids = None, target_attn = None):
 
-        # batch size
-        # print("start of : get_loss_vec")
         batch_size = target_ids.shape[0]
-        
-        # target_sequence_length of the model
         target_sequence_length = target_ids.shape[1]
-        # # print("getlossvec,loss input",input_ids.shape,target_ids.shape)
         logits = (self(input_ids, input_attn, target_ids = target_ids, target_attn = target_attn)).logits
-        # # print("17.17",logits.shape,target_ids.shape) #17.17 torch.Size([2, 100, 32128]) torch.Size([2, 100])
         
+        logits_masked = logits[target_attn.bool(),:]
+        target_masked = target_ids[target_attn.bool()]
+      
+        loss_seq = self._criterion(logits_masked, target_masked)
+     
+        temp = torch.sum(target_attn,-1).squeeze()#tensor([100,10,4,3])
+     
+        attn_list = []
+        for t in temp:
+            attn_list.append(t)
+        attn_tuple = tuple(attn_list)
+        loss_vec = torch.split(loss_seq,attn_tuple)
+        ret = torch.empty(batch_size).cuda()
+        for index,sent_loss in enumerate(loss_vec) :
+            # print(sent_loss.shape)
+            ret[index] = torch.mean(sent_loss)
         
-
-        # torch.save(logits,"./logits.pt")
-        # torch.save(target_ids,"./target_ids.pt")
-        loss_vec = self._criterion(logits.view(-1, logits.size(-1)), target_ids.view(-1))
-        # # print("getlossvec,loss_vec",loss_vec.shape)
-        loss_vec = loss_vec.view(batch_size, -1).mean(dim = 1)
-
-        # # print("getlossvec,loss_vec",loss_vec.shape)
-        # print("end of : get_loss_vec")
-        return loss_vec
+        return ret
 
     # used for generation of summaries from articles
     def generate(self, input_ids, num_beams = 4, max_length=max_length):

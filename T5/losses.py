@@ -26,7 +26,6 @@ def CTG_loss(input_ids, input_attn, target_ids, target_attn, attn_idx, attention
     attention_weights = attention_parameters(attn_idx)
     # logging.info(f"attentionweight:{attention_weights}")
     loss_vec = model.get_loss_vec(input_ids, input_attn, target_ids = target_ids, target_attn = target_attn)
-  
     loss = torch.dot(attention_weights, loss_vec)
     scaling_factor = 1
     
@@ -70,6 +69,9 @@ def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
     #torch.Size([4, 53, 1])print('w_soft_idx.shape',w_soft_idx.shape)
     one_hot = torch.zeros(output_ids.shape[0], output_ids.shape[1], v_model.vocab_size).cuda()
     w_output_ids = one_hot.scatter_(-1, output_ids.unsqueeze(-1), 1.).float().detach() + w_soft_idx.sum() - w_soft_idx.sum().detach()
+    temp = torch.argmax(w_output_ids,-1)
+    # print('temp',temp)
+    # print('output_ids',output_ids)
     loss_syn = v_model.loss( input_syn_ids ,input_syn_attn   , target_ids = w_output_ids, target_attn = att)
 
     #[4, 53, 32100])print('one_hot.shape',one_hot.shape)

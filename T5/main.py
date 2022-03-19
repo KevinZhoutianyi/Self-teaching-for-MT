@@ -32,8 +32,8 @@ parser = argparse.ArgumentParser("main")
 
 
 
-parser.add_argument('--valid_num_points', type=int,             default = 100 , help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 400 , help='train data number')
+parser.add_argument('--valid_num_points', type=int,             default = 200, help='validation data number')
+parser.add_argument('--train_num_points', type=int,             default = 2000, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
@@ -44,10 +44,10 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
-parser.add_argument('--pre_epochs', type=int,                   default=1,      help='train model W for x epoch first')
+parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
 
-parser.add_argument('--w_lr', type=float,                       default=5e-3,   help='learning rate for w')
+parser.add_argument('--w_lr', type=float,                       default=5e-6,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=5e-3,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-5,   help='learning_rate_min')
@@ -58,8 +58,8 @@ parser.add_argument('--momentum', type=float,                   default=0.7,    
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.9,    help='human translated data ratio')
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.1,    help='augmented dataset ratio')
 
-parser.add_argument('--valid_begin', type=int,                  default=1,    help='whether valid before train')
-parser.add_argument('--train_A', type=int,                      default= 0 ,   help='whether train A')
+parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
+parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
 
 
 args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
@@ -101,7 +101,7 @@ torch.save(pretrained,'T5BASE.pt')
 import random
 tokenizer = T5Tokenizer.from_pretrained("t5-base")
 
-criterion = torch.nn.CrossEntropyLoss( reduction='none')#ignore_index = tokenizer.pad_token_id,
+criterion = torch.nn.CrossEntropyLoss( reduction='none')#
 # dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
 valid = dataset['validation']['translation'][:args.valid_num_points]
@@ -149,7 +149,7 @@ A = A.cuda()
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_w_in_main')
 model_w = model_w.cuda()
-w_optimizer = torch.optim.SGD(model_w.parameters(),args.w_lr,momentum=args.momentum,weight_decay=args.decay)
+w_optimizer = torch.optim.Adam(model_w.parameters(),args.w_lr)#,momentum=args.momentum,weight_decay=args.decay)
 scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0.5)
 # scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
@@ -157,7 +157,7 @@ scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0
 
 model_v = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_v_in_main')
 model_v = model_v.cuda()
-v_optimizer = torch.optim.SGD(model_v.parameters(),args.v_lr,momentum=args.momentum,weight_decay=args.decay)
+v_optimizer = torch.optim.Adam(model_v.parameters(),args.v_lr)#,momentum=args.momentum,weight_decay=args.decay)
 scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0.5)
 # scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
@@ -210,15 +210,18 @@ def my_test(_dataloader,model,epoch):
     metric_bleu =  load_metric('bleu')
     wsize = args.train_w_num_points
     for step, batch in enumerate(_dataloader):
-        test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()
-        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).cuda()
-        test_dataloadery = Variable(batch[2], requires_grad=False).cuda()
-        test_dataloadery_attn = Variable(batch[3], requires_grad=False).cuda()
+        test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()[:wsize]
+        # print('test_dataloaderx',test_dataloaderx)
+        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).cuda()[:wsize]
+        test_dataloadery = Variable(batch[2], requires_grad=False).cuda()[:wsize]
+        # print('test_dataloadery',test_dataloadery)
+        test_dataloadery_attn = Variable(batch[3], requires_grad=False).cuda()[:wsize]
         with torch.no_grad():
             ls = my_loss(test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,model)
             acc+= ls
             counter+= 1
             pre = model.generate(test_dataloaderx)
+            # print('pre',pre)
             try:
                 x_decoded = tokenizer.batch_decode(test_dataloaderx,skip_special_tokens=True)
                 pred_decoded = tokenizer.batch_decode(pre,skip_special_tokens=True)
@@ -311,19 +314,19 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         
                 
 
-        if epoch >= args.pre_epochs and epoch <= args.epochs:
-            v_optimizer.zero_grad()
-            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
-            loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
+        # if epoch >= args.pre_epochs and epoch <= args.epochs:
+        #     v_optimizer.zero_grad()
+        #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
+        #     loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
             
-            v_loss =  (args.syndata_loss_ratio*loss_aug+args.traindata_loss_ratio*loss)/num_batch
+        #     v_loss =  (args.syndata_loss_ratio*loss_aug+args.traindata_loss_ratio*loss)/num_batch
             
-            batch_loss_v += v_loss.item()
-            v_loss.backward()
-            # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-            v_optimizer.step()     
+        #     batch_loss_v += v_loss.item()
+        #     v_loss.backward()
+        #     # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+        #     v_optimizer.step()     
                 
-            v_trainloss_acc+=v_loss.item()
+        #     v_trainloss_acc+=v_loss.item()
             
         if(step*args.batch_size%5==0):
             logging.info(f"{step*args.batch_size*100/(args.train_num_points)}%")
@@ -355,20 +358,16 @@ for epoch in range(args.epochs):
 
     
     my_test(valid_dataloader,model_w,epoch) 
-    my_test(valid_dataloader,model_v,epoch)  
+    # my_test(train_dataloader,model_v,epoch)  
 
-    if(epoch%5==0 and epoch!=0):
-        torch.save(model_v,'./model/'+now+'model_v.pt')
-        torch.save(model_v,'./model/'+now+'model_w.pt')
+torch.save(model_v,'./model/'+now+'model_v.pt')
+torch.save(model_v,'./model/'+now+'model_w.pt')
      
    
    
         
     
 
-
-
-# %%
 
 
 

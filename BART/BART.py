@@ -36,10 +36,10 @@ class Embedding_(torch.nn.Module):
         return torch.matmul(mask, self.embedding.weight[:32100,:])
 
 
-class T5(nn.Module):
+class BART(nn.Module):
     
     def __init__(self, criterion, tokenizer,name='unknown', MODEL = 't5-base'):
-        super(T5, self).__init__()
+        super(BART, self).__init__()
         self.name = name
         self.tokenizer = tokenizer
         self.vocab_size = tokenizer.vocab_size
@@ -47,7 +47,7 @@ class T5(nn.Module):
         
         self._criterion = criterion
 
-        self.model = torch.load("T5BASE.pt")
+        self.model = torch.load("pretrained_model.pt")
         
         # # print('Loading the pretrained model ....')
         # Load the pre-trained model trained for 
