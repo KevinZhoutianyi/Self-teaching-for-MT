@@ -2,6 +2,7 @@ from cProfile import label
 import os
 import random
 import numpy as np
+import gc
 import copy
 from transformers import  T5ForConditionalGeneration
 from transformers import T5Tokenizer
@@ -49,18 +50,7 @@ class T5(nn.Module):
         self._criterion = criterion
 
         self.model = torch.load("T5BASE.pt")
-        
-        # # print('Loading the pretrained model ....')
-        # Load the pre-trained model trained for 
-        # self.model.load_state_dict(torch.load('pretrained_BART.pt'))
-        # # print('Done! Loaded the pretrained model ....')
-        
         self.encoder = self.model.get_encoder()
-        # self.decoder = self.model.get_decoder()
-        # print(self.encoder.embed_tokens.weight)
-        # print(self.decoder.embed_tokens.weight)
-
-        # embedding layer for both encoder and decoder since it is shared   
         self.embedding = Embedding_(self.encoder.embed_tokens).requires_grad_()#convert token to 512dimensions vector
         self.enc_emb_scale = 1
 
@@ -69,9 +59,6 @@ class T5(nn.Module):
         # logging.info(f"[T5] input_ids shape {input_ids.shape}")
         
         inp_emb = self.embedding(input_ids)/self.enc_emb_scale
-        # logging.info(f"[T5] inp_emb shape {inp_emb.shape}")
-        # logging.info(f"[T5] input_attn shape {input_attn.shape}")
-        # print("T5 inputshape:",inp_emb.shape,input_attn.shape) # after embedding the shape becomes([5, 232, 768]) (batchsize,tokenziedlength,embeddinglength)
         out = self.model(inputs_embeds = inp_emb, attention_mask = input_attn, labels = target_ids, decoder_attention_mask = target_attn, return_dict=True)
 
         # print('end of forward')
@@ -79,28 +66,18 @@ class T5(nn.Module):
     
     def loss(self, input_ids, input_attn, target_ids, target_attn):
         # input is distribution , output is just category index
-        
-        # print(input_ids.shape)
+        #targetids are shifted
         batch_size = target_ids.shape[0]
-        print('target_ids',target_ids)
-        print('target_ids',target_ids.shape)
+        
         out_emb = self.embedding(target_ids)/self.enc_emb_scale
         inp_emb = self.embedding(input_ids)/self.enc_emb_scale
 
-        # print(out_emb.shape)
-        # print(inp_emb.shape)
-        #  is embedding sharing for input and out? cuz they are in different language:  yes
-        temp = self.model(inputs_embeds = inp_emb, attention_mask = input_attn,labels= target_ids.float(), return_dict=True)
-        loss = temp.loss
-     
-        # logits = logits[:,:,:32100]
-       
-        # ## TODO: now we dont use ignoreindex
-        # loss = self._criterion(logits.view(-1, logits.size(-1)),target_ids.view(-1, target_ids.size(-1)))
-        
-        # loss = loss.view(batch_size, -1).mean(dim = 1)
-        # loss = torch.mean(loss)
-        print(temp)
+        logits = self.model(inputs_embeds = inp_emb, attention_mask = input_attn, decoder_inputs_embeds   = out_emb, decoder_attention_mask = target_attn, return_dict=True).logits
+
+        logits = logits[:,:,:32100]
+        loss = self._criterion(logits,target_ids)
+        loss = loss[target_ids[:, 0] != 1]#get rid of padding loss
+        loss = torch.mean(loss)
         return loss
 
 
@@ -116,18 +93,16 @@ class T5(nn.Module):
         # # print("T5 loss", loss.shape)
         # return loss
     def get_loss_vec(self, input_ids, input_attn, target_ids = None, target_attn = None):
-
+        '''
+        only count the loss when attn is 1(ie:mask the model output logits)
+        reason:
+        1. we need loss vector, so we cant use self().loss
+        2. we will use logits with criterion to get loss, so we cannot use CE(ignoreindex==padindex)
+        '''
         batch_size = target_ids.shape[0]
-        target_sequence_length = target_ids.shape[1]
         logits = (self(input_ids, input_attn, target_ids = target_ids, target_attn = target_attn)).logits
-        
-        logits_masked = logits[target_attn.bool(),:]
-        target_masked = target_ids[target_attn.bool()]
-      
-        loss_seq = self._criterion(logits_masked, target_masked)
-     
+        loss_seq = self._criterion(logits[target_attn.bool(),:], target_ids[target_attn.bool()])
         temp = torch.sum(target_attn,-1).squeeze()#tensor([100,10,4,3])
-     
         attn_list = []
         for t in temp:
             attn_list.append(t)
@@ -137,8 +112,10 @@ class T5(nn.Module):
         for index,sent_loss in enumerate(loss_vec) :
             # print(sent_loss.shape)
             ret[index] = torch.mean(sent_loss)
-        
+        del batch_size
+        gc.collect()  
         return ret
+
 
     # used for generation of summaries from articles
     def generate(self, input_ids, num_beams = 4, max_length=max_length):
