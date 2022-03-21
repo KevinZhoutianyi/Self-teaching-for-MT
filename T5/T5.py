@@ -101,20 +101,10 @@ class T5(nn.Module):
         '''
         batch_size = target_ids.shape[0]
         logits = (self(input_ids, input_attn, target_ids = target_ids, target_attn = target_attn)).logits
-        loss_seq = self._criterion(logits[target_attn.bool(),:], target_ids[target_attn.bool()])
-        temp = torch.sum(target_attn,-1).squeeze()#tensor([100,10,4,3])
-        attn_list = []
-        for t in temp:
-            attn_list.append(t)
-        attn_tuple = tuple(attn_list)
-        loss_vec = torch.split(loss_seq,attn_tuple)
-        ret = torch.empty(batch_size).cuda()
-        for index,sent_loss in enumerate(loss_vec) :
-            # print(sent_loss.shape)
-            ret[index] = torch.mean(sent_loss)
-        del batch_size
-        gc.collect()  
-        return ret
+        loss_seq = self._criterion(logits.view(-1,logits.shape[-1]), target_ids.view(-1)).view(batch_size,-1)
+        mul = loss_seq*target_attn
+        loss_vec = torch.mean(mul,-1).squeeze()
+        return loss_vec
 
 
     # used for generation of summaries from articles
