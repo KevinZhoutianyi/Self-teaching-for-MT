@@ -7,5 +7,5 @@ mkdir model
 mkdir tensorboard
 rm -f ./log/*.txt
 rm -f ./tensorboard/*
-python main.py --valid_num_points 2000 --train_num_points 16000 --valid_begin 1 --train_A 1
+python main.py --valid_num_points 2000 --train_num_points 16000 --valid_begin 1 --train_A 0
 
