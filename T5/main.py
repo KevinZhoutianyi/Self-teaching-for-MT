@@ -25,15 +25,10 @@ import string
 
 # %%
 parser = argparse.ArgumentParser("main")
-# parser.add_argument('--seed_', type=int, default=2, help='seed')
-
-# parser.add_argument('--max_length', type=int, default = 256, help='max length')
 
 
-
-
-parser.add_argument('--valid_num_points', type=int,             default = 200, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 2000, help='train data number')
+parser.add_argument('--valid_num_points', type=int,             default = 2000, help='validation data number')
+parser.add_argument('--train_num_points', type=int,             default = 100, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
@@ -44,22 +39,22 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
-parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
+parser.add_argument('--pre_epochs', type=int,                   default=3,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
 
-parser.add_argument('--w_lr', type=float,                       default=5e-6,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=5e-3,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=5e-5,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=5e-5,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-5,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
 
 
-parser.add_argument('--traindata_loss_ratio', type=float,       default=0.9,    help='human translated data ratio')
-parser.add_argument('--syndata_loss_ratio', type=float,         default=0.1,    help='augmented dataset ratio')
+parser.add_argument('--traindata_loss_ratio', type=float,       default=0.5,    help='human translated data ratio')
+parser.add_argument('--syndata_loss_ratio', type=float,         default=0.5,    help='augmented dataset ratio')
 
 parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
-parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
+parser.add_argument('--train_A', type=int,                      default=1 ,     help='whether train A')
 
 
 args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
@@ -93,15 +88,15 @@ torch.cuda.manual_seed(seed_)
 
 # %%
 
-pretrained  =  T5ForConditionalGeneration.from_pretrained("t5-base")
+pretrained  =  T5ForConditionalGeneration.from_pretrained("t5-small")
 torch.save(pretrained,'T5BASE.pt')
 
 # %%
 # Load the tokenizer.
 import random
-tokenizer = T5Tokenizer.from_pretrained("t5-base")
+tokenizer = T5Tokenizer.from_pretrained("t5-small")
 
-criterion = torch.nn.CrossEntropyLoss( reduction='none')#
+criterion = torch.nn.CrossEntropyLoss( reduction='none')#,ignore_index = tokenizer.pad_token_id)#
 # dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
 valid = dataset['validation']['translation'][:args.valid_num_points]
@@ -133,13 +128,13 @@ logging.info(train[2])
 target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
 train_dataloader = DataLoader(train_data, sampler=SequentialSampler(train_data), 
-                        batch_size=args.batch_size, pin_memory=True, num_workers=0)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
-                        batch_size=args.batch_size, pin_memory=True, num_workers=0)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
-                        batch_size=args.batch_size, pin_memory=True, num_workers=0)#, sampler=RandomSampler(test_data)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=2)#, sampler=RandomSampler(test_data)
 
 # %%
 
@@ -208,14 +203,12 @@ def my_test(_dataloader,model,epoch):
     model.eval()
     metric_sacrebleu =  load_metric('sacrebleu')
     metric_bleu =  load_metric('bleu')
-    wsize = args.train_w_num_points
+
     for step, batch in enumerate(_dataloader):
-        test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()[:wsize]
-        # print('test_dataloaderx',test_dataloaderx)
-        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).cuda()[:wsize]
-        test_dataloadery = Variable(batch[2], requires_grad=False).cuda()[:wsize]
-        # print('test_dataloadery',test_dataloadery)
-        test_dataloadery_attn = Variable(batch[3], requires_grad=False).cuda()[:wsize]
+        test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()
+        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).cuda()
+        test_dataloadery = Variable(batch[2], requires_grad=False).cuda()
+        test_dataloadery_attn = Variable(batch[3], requires_grad=False).cuda()
         with torch.no_grad():
             ls = my_loss(test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,model)
             acc+= ls
@@ -301,32 +294,29 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         if (epoch <= args.epochs) and (args.train_A == 1):
             architect.step(input_w,  output_w,input_w_attn, output_w_attn, w_optimizer, input_syn, input_syn_attn,input_A_v, input_A_v_attn, output_A_v, 
                 output_A_v_attn, v_optimizer, attn_idx, lr_w, lr_v)
-
-        if  epoch <= args.epochs:
+        
+        if  epoch <= args.epochs and epoch <= args.epochs:
             
             w_optimizer.zero_grad()
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
             batch_loss_w += loss_w.item()
+            w_trainloss_acc+=loss_w.item()
             loss_w.backward()
             # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
             w_optimizer.step()
-            w_trainloss_acc+=loss_w.item()
-        
-                
-
-        # if epoch >= args.pre_epochs and epoch <= args.epochs:
-        #     v_optimizer.zero_grad()
-        #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
-        #     loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
+        if epoch >= args.pre_epochs and epoch <= args.epochs:
+            v_optimizer.zero_grad()
+            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
+            loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
             
-        #     v_loss =  (args.syndata_loss_ratio*loss_aug+args.traindata_loss_ratio*loss)/num_batch
+            v_loss =  (args.syndata_loss_ratio*loss_aug+args.traindata_loss_ratio*loss)/num_batch
             
-        #     batch_loss_v += v_loss.item()
-        #     v_loss.backward()
-        #     # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-        #     v_optimizer.step()     
+            batch_loss_v += v_loss.item()
+            v_trainloss_acc+=v_loss.item()
+            v_loss.backward()
+            # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+            v_optimizer.step()     
                 
-        #     v_trainloss_acc+=v_loss.item()
             
         if(step*args.batch_size%5==0):
             logging.info(f"{step*args.batch_size*100/(args.train_num_points)}%")
@@ -340,7 +330,6 @@ if(args.valid_begin==1):
     my_test(valid_dataloader,model_w,-1) #before train
     my_test(valid_dataloader,model_v,-1)  
 for epoch in range(args.epochs):
-
     lr_w = scheduler_w.get_lr()[0]
     lr_v = scheduler_v.get_lr()[0]
 
@@ -358,7 +347,7 @@ for epoch in range(args.epochs):
 
     
     my_test(valid_dataloader,model_w,epoch) 
-    # my_test(train_dataloader,model_v,epoch)  
+    my_test(valid_dataloader,model_v,epoch)  
 
 torch.save(model_v,'./model/'+now+'model_v.pt')
 torch.save(model_v,'./model/'+now+'model_w.pt')
