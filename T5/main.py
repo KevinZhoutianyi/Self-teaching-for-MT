@@ -27,8 +27,8 @@ import string
 parser = argparse.ArgumentParser("main")
 
 
-parser.add_argument('--valid_num_points', type=int,             default = 2000, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 100, help='train data number')
+parser.add_argument('--valid_num_points', type=int,             default = 1000, help='validation data number')
+parser.add_argument('--train_num_points', type=int,             default = 4000, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
@@ -42,8 +42,8 @@ parser.add_argument('--epochs', type=int,                       default=50,     
 parser.add_argument('--pre_epochs', type=int,                   default=3,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
 
-parser.add_argument('--w_lr', type=float,                       default=5e-5,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=5e-5,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=5e-6,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=5e-6,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-5,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -54,7 +54,7 @@ parser.add_argument('--traindata_loss_ratio', type=float,       default=0.5,    
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.5,    help='augmented dataset ratio')
 
 parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
-parser.add_argument('--train_A', type=int,                      default=1 ,     help='whether train A')
+parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
 
 
 args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
@@ -291,7 +291,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         output_A_v_attn = train_y_attn[wsize+synsize+vsize:wsize+synsize+vsize+Asize]
        
 
-        if (epoch <= args.epochs) and (args.train_A == 1):
+        if (epoch <= args.epochs) and (args.train_A == 1) and epoch >= args.pre_epochs:
             architect.step(input_w,  output_w,input_w_attn, output_w_attn, w_optimizer, input_syn, input_syn_attn,input_A_v, input_A_v_attn, output_A_v, 
                 output_A_v_attn, v_optimizer, attn_idx, lr_w, lr_v)
         
@@ -304,21 +304,21 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             loss_w.backward()
             # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
             w_optimizer.step()
-        if epoch >= args.pre_epochs and epoch <= args.epochs:
-            v_optimizer.zero_grad()
-            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
-            loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
+        # if epoch >= args.pre_epochs and epoch <= args.epochs:
+        #     v_optimizer.zero_grad()
+        #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
+        #     loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
             
-            v_loss =  (args.syndata_loss_ratio*loss_aug+args.traindata_loss_ratio*loss)/num_batch
+        #     v_loss =  (args.syndata_loss_ratio*loss_aug+args.traindata_loss_ratio*loss)/num_batch
             
-            batch_loss_v += v_loss.item()
-            v_trainloss_acc+=v_loss.item()
-            v_loss.backward()
-            # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-            v_optimizer.step()     
+        #     batch_loss_v += v_loss.item()
+        #     v_trainloss_acc+=v_loss.item()
+        #     v_loss.backward()
+        #     # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+        #     v_optimizer.step()     
                 
             
-        if(step*args.batch_size%5==0):
+        if(step*args.batch_size%50==0):
             logging.info(f"{step*args.batch_size*100/(args.train_num_points)}%")
     logging.info(str(("Attention Weights A : ", A.alpha)))
     
@@ -357,6 +357,9 @@ torch.save(model_v,'./model/'+now+'model_w.pt')
         
     
 
+
+
+# %%
 
 
 
