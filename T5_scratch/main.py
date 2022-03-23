@@ -6,10 +6,11 @@ import warnings
 warnings.filterwarnings("ignore")
 from T5 import *
 from datasets import load_dataset,load_metric
-from transformers import T5Tokenizer
+from transformers import T5Tokenizer,T5Model,T5ForConditionalGeneration
 from MT_hyperparams import *
 import torch.backends.cudnn as cudnn
 from utils import *
+from transformers import AutoConfig, AutoModelForMaskedLM, AutoTokenizer
 from attention_params import *
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler, SubsetRandomSampler
 from torch.autograd import Variable
@@ -27,8 +28,8 @@ import string
 parser = argparse.ArgumentParser("main")
 
 
-parser.add_argument('--valid_num_points', type=int,             default = 1000, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 4000, help='train data number')
+parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
+parser.add_argument('--train_num_points', type=int,             default = 508785, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
@@ -42,10 +43,10 @@ parser.add_argument('--epochs', type=int,                       default=50,     
 parser.add_argument('--pre_epochs', type=int,                   default=3,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
 
-parser.add_argument('--w_lr', type=float,                       default=5e-6,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=5e-6,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=3e-2,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=3e-2,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
-parser.add_argument('--learning_rate_min', type=float,          default=1e-5,   help='learning_rate_min')
+parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
 
@@ -87,9 +88,10 @@ cudnn.enabled=True
 torch.cuda.manual_seed(seed_)
 
 # %%
-
-pretrained  =  T5ForConditionalGeneration.from_pretrained("t5-small")
-torch.save(pretrained,'T5BASE.pt')
+tokenizer = AutoTokenizer.from_pretrained("t5-small")
+config = AutoConfig.from_pretrained("t5-small")
+model_scartch = T5ForConditionalGeneration(config=config)
+torch.save(model_scartch,'T5_scartch.pt')
 
 # %%
 # Load the tokenizer.
@@ -104,9 +106,9 @@ test = dataset['test']['translation']#[L_t+L_v:L_t+L_v+L_test]
 def preprocess(dat):
     for t in dat:
         t['en'] = 'translate English to German: ' + t['en'] 
-preprocess(train)
-preprocess(valid)
-preprocess(test)
+# preprocess(train)
+# preprocess(valid)
+# preprocess(test)
 num_batch = args.train_num_points//args.batch_size
 train = train[:args.batch_size*num_batch]
 logging.info("train len: %d",len(train))
@@ -145,16 +147,16 @@ A = A.cuda()
 model_w = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_w_in_main')
 model_w = model_w.cuda()
 w_optimizer = torch.optim.Adam(model_w.parameters(),args.w_lr)#,momentum=args.momentum,weight_decay=args.decay)
-scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0.5)
-# scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
+# scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0.5)
+scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
 
 model_v = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_v_in_main')
 model_v = model_v.cuda()
 v_optimizer = torch.optim.Adam(model_v.parameters(),args.v_lr)#,momentum=args.momentum,weight_decay=args.decay)
-scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0.5)
-# scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
+# scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0.5)
+scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
 
@@ -326,9 +328,9 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
 
 
 # %%
-if(args.valid_begin==1):
-    my_test(valid_dataloader,model_w,-1) #before train
-    my_test(valid_dataloader,model_v,-1)  
+# if(args.valid_begin==1):
+#     my_test(valid_dataloader,model_w,-1) #before train
+#     my_test(valid_dataloader,model_v,-1)  
 for epoch in range(args.epochs):
     lr_w = scheduler_w.get_lr()[0]
     lr_v = scheduler_v.get_lr()[0]
@@ -345,9 +347,9 @@ for epoch in range(args.epochs):
 
     logging.info(f"w_train_loss:{w_train_loss},v_train_loss:{v_train_loss}")
 
-    
-    my_test(valid_dataloader,model_w,epoch) 
-    my_test(valid_dataloader,model_v,epoch)  
+    if(epoch%10==0 and epoch!=0):
+        my_test(valid_dataloader,model_w,epoch) 
+        my_test(valid_dataloader,model_v,epoch)  
 
 torch.save(model_v,'./model/'+now+'model_v.pt')
 torch.save(model_v,'./model/'+now+'model_w.pt')

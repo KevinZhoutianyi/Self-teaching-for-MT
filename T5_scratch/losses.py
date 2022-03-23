@@ -17,7 +17,8 @@ def seed_torch(seed=0):
     torch.backends.cudnn.deterministic = True
     
 seed_torch(seed_)
-
+from transformers import T5Tokenizer
+tokenizer = T5Tokenizer.from_pretrained("t5-small")
 # the loss for the encoder and the decoder model 
 # this takes into account the attention for all the datapoints for the encoder-decoder model
 def CTG_loss(input_ids, input_attn, target_ids, target_attn, attn_idx, attention_parameters, model):

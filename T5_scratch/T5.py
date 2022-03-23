@@ -4,10 +4,8 @@ import random
 import numpy as np
 import gc
 import copy
-from transformers import  BartForConditionalGeneration
-from transformers import BartTokenizer
-
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import  T5ForConditionalGeneration
+from transformers import T5Tokenizer
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -37,13 +35,13 @@ class Embedding_(torch.nn.Module):
             return self.embedding(mask)
         
         assert mask.dtype == torch.float
-        return torch.matmul(mask, self.embedding.weight)#[:32100,:])
+        return torch.matmul(mask, self.embedding.weight[:32100,:])
 
 
-class BART(nn.Module):
+class T5(nn.Module):
     
-    def __init__(self, criterion, tokenizer,name='unknown', MODEL = 'none'):
-        super(BART, self).__init__()
+    def __init__(self, criterion, tokenizer,name='unknown', MODEL = 't5-base'):
+        super(T5, self).__init__()
         self.name = name
         self.tokenizer = tokenizer
         self.vocab_size = tokenizer.vocab_size
@@ -51,7 +49,7 @@ class BART(nn.Module):
         
         self._criterion = criterion
 
-        self.model = torch.load("BARTBASE.pt")
+        self.model = torch.load("T5_scartch.pt")
         self.encoder = self.model.get_encoder()
         self.embedding = Embedding_(self.encoder.embed_tokens).requires_grad_()#convert token to 512dimensions vector
         self.enc_emb_scale = 1
@@ -76,7 +74,7 @@ class BART(nn.Module):
 
         logits = self.model(inputs_embeds = inp_emb, attention_mask = input_attn, decoder_inputs_embeds   = out_emb, decoder_attention_mask = target_attn, return_dict=True).logits
 
-        # logits = logits[:,:,:32100]
+        logits = logits[:,:,:32100]
         loss = self._criterion(logits,target_ids)
         loss = loss[target_ids[:, 0] != 1]#get rid of padding loss
         loss = torch.mean(loss)
@@ -129,7 +127,7 @@ class BART(nn.Module):
 
         # there is embedding layer and the summarization head that we will not train on 
         # we just train on the encoder and the decoder weights 
-        model_new = BART(self._criterion, self.tokenizer).cuda()
+        model_new = T5(self._criterion, self.tokenizer).cuda()
         
         # hence we deep copy all the weights and update the required ones
         # use the first order approximation for the summarization head
@@ -139,3 +137,16 @@ class BART(nn.Module):
         return model_new
 
 
+if __name__ == "__main__":
+    # print("T5 main")
+    t5_tokenizer = T5Tokenizer.from_pretrained('t5-base')
+    t5_criterion = torch.nn.CrossEntropyLoss(ignore_index = T5Tokenizer.pad_token_id, reduction='none')
+    t5_criterion = t5_criterion.cuda()
+    t5 = T5(t5_criterion,t5_tokenizer)
+    t5 = t5.cuda()
+    # print(t5)
+
+    
+
+    t5new  = t5.new()
+    # print(t5new)

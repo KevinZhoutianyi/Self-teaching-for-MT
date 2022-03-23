@@ -2,20 +2,11 @@
 __pycache__/
 *.py[cod]
 *$py.class
-Helsinki/__pycache__/
-Helsinki/log/
-Helsinki/tensorboard/
-Helsinki/*pt
-T5/__pycache__/
-T5/log/
-T5/tensorboard/
-T5/model/
-T5/*.pt
-BART/__pycache__/
-BART/log/
-BART/tensorboard/
-BART/model/
-BART/*.pt
+
+log/
+tensorboard/
+model/
+*.pt
 
 
 # C extensions
