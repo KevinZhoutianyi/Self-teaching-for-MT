@@ -347,9 +347,8 @@ for epoch in range(args.epochs):
 
     logging.info(f"w_train_loss:{w_train_loss},v_train_loss:{v_train_loss}")
 
-    if(epoch%10==0 and epoch!=0):
-        my_test(valid_dataloader,model_w,epoch) 
-        my_test(valid_dataloader,model_v,epoch)  
+    my_test(valid_dataloader,model_w,epoch) 
+    my_test(valid_dataloader,model_v,epoch)  
 
 torch.save(model_v,'./model/'+now+'model_v.pt')
 torch.save(model_v,'./model/'+now+'model_w.pt')
