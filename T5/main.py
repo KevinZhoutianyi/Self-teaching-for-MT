@@ -42,10 +42,10 @@ parser.add_argument('--epochs', type=int,                       default=50,     
 parser.add_argument('--pre_epochs', type=int,                   default=3,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
 
-parser.add_argument('--w_lr', type=float,                       default=5e-6,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=5e-6,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=3e-6,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=3e-5,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
-parser.add_argument('--learning_rate_min', type=float,          default=1e-5,   help='learning_rate_min')
+parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
 
@@ -88,13 +88,13 @@ torch.cuda.manual_seed(seed_)
 
 # %%
 
-pretrained  =  T5ForConditionalGeneration.from_pretrained("t5-small")
+pretrained  =  T5ForConditionalGeneration.from_pretrained("t5-base")
 torch.save(pretrained,'T5BASE.pt')
 
 # %%
 # Load the tokenizer.
 import random
-tokenizer = T5Tokenizer.from_pretrained("t5-small")
+tokenizer = T5Tokenizer.from_pretrained("t5-base")
 
 criterion = torch.nn.CrossEntropyLoss( reduction='none')#,ignore_index = tokenizer.pad_token_id)#
 # dataset = dataset.shuffle(seed=seed_)
