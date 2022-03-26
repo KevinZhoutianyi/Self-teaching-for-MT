@@ -60,6 +60,14 @@ parser.add_argument('--train_A', type=int,                      default=0 ,     
 args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
 
 # %%
+import wandb
+os.environ['WANDB_API_KEY']='a166474b1b7ad33a0549adaaec19a2f6d3f91d87'
+os.environ['WANDB_NAME']='testt'
+os.environ['WANDB_NOTES']='Auto login test'
+wandb.init(project="my-awesome-project",config=args)
+
+
+# %%
 now = time.strftime("%Y-%m-%d-%H_%M_%S",time.localtime(time.time())) 
 
 log_format = '%(asctime)s |\t  %(message)s'
@@ -248,6 +256,8 @@ def my_test(_dataloader,model,epoch):
     writer.add_scalar(model.name+"/test_loss", acc/counter, global_step=epoch)
     writer.add_scalar(model.name+"/sacreBLEU",sacrebleu_score['score'], global_step=epoch)
     writer.add_scalar(model.name+"/BLEU",bleu_score['bleu'], global_step=epoch)
+    
+    wandb.log({'sacreBLEU'+'model.name': sacrebleu_score['score']})
     model.train()
         
 
@@ -344,6 +354,7 @@ for epoch in range(args.epochs):
     writer.add_scalar("MT/model_v_in_main/v_trainloss", v_train_loss, global_step=epoch)
 
     logging.info(f"w_train_loss:{w_train_loss},v_train_loss:{v_train_loss}")
+    wandb.log({'w_train_loss': w_train_loss, 'v_train_loss':v_train_loss})
 
     
     my_test(valid_dataloader,model_w,epoch) 

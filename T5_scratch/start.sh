@@ -2,6 +2,7 @@ cd /tianyi-vol/Self-teaching-for-machine-translation/T5_scratch
 pip install transformers
 pip install datasets
 pip install sacrebleu==1.5.1
+pip install wandb
 mkdir log
 mkdir model
 mkdir tensorboard

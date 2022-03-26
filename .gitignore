@@ -7,7 +7,7 @@ log/
 tensorboard/
 model/
 *.pt
-
+wandb/
 
 # C extensions
 *.so
