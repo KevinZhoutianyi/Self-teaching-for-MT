@@ -62,8 +62,8 @@ args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ip
 # %%
 import wandb
 os.environ['WANDB_API_KEY']='a166474b1b7ad33a0549adaaec19a2f6d3f91d87'
-os.environ['WANDB_NAME']='testt'
-os.environ['WANDB_NOTES']='Auto login test'
+os.environ['WANDB_NAME']='withoutA'
+os.environ['WANDB_NOTES']='train without A'
 wandb.init(project="my-awesome-project",config=args)
 
 
@@ -167,40 +167,6 @@ scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0
 
 
 architect = Architect(model_w, model_v,  A, args)
-
-# %%
-# # x = ['im going to eat now ','it is my nameit is']
-# # for index,i in enumerate(x) :
-# #     x[index] = 'translate Enlgish to German:' + x[index]
-# # y= tokenize(x, tokenizer, max_length = max_length)
-# # input = y[0].cuda()
-# # output  = model_v.generate(input,max_length=max_length)
-# # tokenizer.batch_decode(output)
-
-
-# metric_bleu =  load_metric('sacrebleu')
-# predlist = ['Eine republikanische Strategie zur Bekämpfung der Wiederwahl Obamas','Die republikanischen Führer rechtfertigten ihre Politik mit der Notwendigkeit , Wahlbetrug zu bekämpfen .']
-# targetlist = ['Eine republikanische Strategie um der Wiederwahl von Obama entgegenzutreten','Die Führungskräfte der Republikaner rechtfertigen ihre Politik mit der Notwendigkeit , den Wahlbetrug zu bekämpfen']
-# predlist = ['Eine republikanische Strategie zur Bekämpfung der Wiederwahl Obamas', 'Die republikanischen Führer rechtfertigten ihre Politik mit der Notwendigkeit, Wahlbetrug zu bekämpfen.']
-# targetlist =['Eine republikanische Strategie, um der Wiederwahl von Obama entgegenzutreten', 'Die Führungskräfte der Republikaner rechtfertigen ihre Politik mit der Notwendigkeit, den Wahlbetrug zu bekämpfen.']
-# 
-# predlist = [x.lower().translate( str.maketrans('', '', string.punctuation))  for x in predlist]
-# targetlist = [[x.lower().translate( str.maketrans('', '', string.punctuation))] for x in targetlist]
-# print(predlist)
-# print(targetlist)
-# metric_bleu.add_batch(predictions=predlist, references=targetlist)
-
-# sacrebleu_score = metric_bleu.compute()
-# print(sacrebleu_score)
-# from nltk.translate import bleu
-# from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
-# def bleu(reference_captions, predicted_caption):
-#     return 100 * sentence_bleu(reference_captions, predicted_caption,
-#                                weights=(0.25, 0.25, 0.25,0.25), smoothing_function=SmoothingFunction().method1)
-# x = bleu(targetlist[1],predlist[1])+bleu(targetlist[0],predlist[0])
-# print(x/2)
-                
-                
 
 # %%
 
