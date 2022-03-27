@@ -49,7 +49,7 @@ class T5(nn.Module):
         
         self._criterion = criterion
 
-        self.model = torch.load(modelname)
+        self.model = torch.load(modelname+'.pt')
         self.encoder = self.model.get_encoder()
         self.embedding = Embedding_(self.encoder.embed_tokens).requires_grad_()#convert token to 512dimensions vector
         self.enc_emb_scale = 1
