@@ -1,7 +1,7 @@
 # %%
 import os
 os.getcwd() 
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+# os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 import warnings
 warnings.filterwarnings("ignore")
 from T5 import *
