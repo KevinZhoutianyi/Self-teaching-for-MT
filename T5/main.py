@@ -95,7 +95,7 @@ cudnn.enabled=True
 torch.cuda.manual_seed(seed_)
 
 # %%
-modelname = "t5-base"
+modelname = "t5-small"
 pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
 torch.save(pretrained,modelname+'.pt')
 
@@ -143,6 +143,7 @@ valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data),
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
                         batch_size=args.batch_size, pin_memory=True, num_workers=2)#, sampler=RandomSampler(test_data)
+logging.info('data loaded')
 
 # %%
 
