@@ -20,6 +20,7 @@ import sys
 import transformers
 import time
 import argparse
+from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 import string
 
@@ -111,7 +112,7 @@ valid = dataset['validation']['translation'][:args.valid_num_points]
 test = dataset['test']['translation']#[L_t+L_v:L_t+L_v+L_test]
 def preprocess(dat):
     for t in dat:
-        t['en'] = 'translate English to German: ' + t['en'] 
+        t['en'] = "translate English to German: " + t['en'] 
 preprocess(train)
 preprocess(valid)
 preprocess(test)
@@ -182,7 +183,7 @@ def my_test(_dataloader,model,epoch):
     metric_sacrebleu =  load_metric('sacrebleu')
     metric_bleu =  load_metric('bleu')
 
-    for step, batch in enumerate(_dataloader):
+    for step, batch in enumerate(tqdm(_dataloader),desc ="test for epoch"+str(epoch)):
         test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()
         test_dataloaderx_attn = Variable(batch[1], requires_grad=False).cuda()
         test_dataloadery = Variable(batch[2], requires_grad=False).cuda()
@@ -204,8 +205,8 @@ def my_test(_dataloader,model,epoch):
                 label_list = [[x.replace('.', '').split()] for x in label_decoded]
                 #pred_str = [x.translate( str.maketrans('', '', string.punctuation)) for x in pred_decoded] 
                 # label_str = [[x.translate( str.maketrans('', '', string.punctuation))] for x in label_decoded]
-                # pred_list = [x.translate( str.maketrans('', '', string.punctuation)).split()  for x in pred_decoded]#TODO:improve
-                # label_list = [[x.translate( str.maketrans('', '', string.punctuation)).split()] for x in label_decoded]#TODO:improve
+                # pred_list = [x.translate( str.maketrans('', '', string.punctuation)).split()  for x in pred_decoded]#:improve
+                # label_list = [[x.translate( str.maketrans('', '', string.punctuation)).split()] for x in label_decoded]#:improve
                 if  step%100==0:
                     logging.info(f'x_decoded[:2]:{x_decoded[:2]}')
                     logging.info(f'pred_decoded[:2]:{pred_decoded[:2]}')
@@ -220,7 +221,7 @@ def my_test(_dataloader,model,epoch):
         # logging.info(f"loss:{ls}")
     sacrebleu_score = metric_sacrebleu.compute()
     bleu_score = metric_bleu.compute()
-    logging.info('%s sacreBLEU : %f',model.name,sacrebleu_score['score'])
+    logging.info('%s sacreBLEU : %f',model.name,sacrebleu_score['score'])#TODO:bleu may be wrong cuz max length
     logging.info('%s BLEU : %f',model.name,bleu_score['bleu'])
     logging.info('%s test loss : %f',model.name,acc/(counter))
     writer.add_scalar(model.name+"/test_loss", acc/counter, global_step=epoch)
@@ -241,7 +242,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     synsize = args.train_w_synthetic_num_points
     vsize = args.train_v_num_points 
     Asize = args.train_A_num_points 
-    for step, batch in enumerate(_dataloader):
+    for step, batch in enumerate(tqdm(_dataloader, desc ="train for epoch"+str(epoch))) :
         counter+=1
         batch_loss_w, batch_loss_v = 0, 0
         
@@ -297,9 +298,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         #     # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
         #     v_optimizer.step()     
                 
-            
-        if(step*args.batch_size%50==0):
-            logging.info(f"{step*args.batch_size*100/(args.train_num_points)}%")
+  
     logging.info(str(("Attention Weights A : ", A.alpha)))
     
     return w_trainloss_acc,v_trainloss_acc
