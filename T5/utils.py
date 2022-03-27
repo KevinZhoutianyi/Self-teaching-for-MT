@@ -31,7 +31,7 @@ def seed_torch(seed=0):
 seed_torch(seed_)
 
 def get_train_Dataset(dataset, tokenizer):
-
+    print('get train data start')
     train_sentence = [x['en'] for x in dataset]
     train_target = [x[target_language] for x in dataset]
 
@@ -41,6 +41,8 @@ def get_train_Dataset(dataset, tokenizer):
     model1_target_ids, model1_target_attention_mask = tokenize(train_target, tokenizer, max_length = max_length)
  
     train_data = TensorDataset(model1_input_ids, model1_input_attention_mask, model1_target_ids, model1_target_attention_mask)
+    
+    print('get train data end')
    
     return train_data
 
