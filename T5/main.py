@@ -95,7 +95,7 @@ cudnn.enabled=True
 torch.cuda.manual_seed(seed_)
 
 # %%
-modelname = "t5-small"
+
 pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
 torch.save(pretrained,modelname+'.pt')
 

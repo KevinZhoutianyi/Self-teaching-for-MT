@@ -40,7 +40,7 @@ class Embedding_(torch.nn.Module):
 
 class T5(nn.Module):
     
-    def __init__(self, criterion, tokenizer,name='unknown', MODEL = 't5-base'):
+    def __init__(self, criterion, tokenizer,name='unknown'):
         super(T5, self).__init__()
         self.name = name
         self.tokenizer = tokenizer
@@ -49,7 +49,7 @@ class T5(nn.Module):
         
         self._criterion = criterion
 
-        self.model = torch.load("T5BASE.pt")
+        self.model = torch.load(modelname)
         self.encoder = self.model.get_encoder()
         self.embedding = Embedding_(self.encoder.embed_tokens).requires_grad_()#convert token to 512dimensions vector
         self.enc_emb_scale = 1
