@@ -53,7 +53,7 @@ parser.add_argument('--momentum', type=float,                   default=0.7,    
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.5,    help='human translated data ratio')
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.5,    help='augmented dataset ratio')
 
-parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
+parser.add_argument('--valid_begin', type=int,                  default=0,      help='whether valid before train')
 parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
 
 
@@ -135,15 +135,18 @@ logging.info(train[2])
 # %%
 target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
+logging.info('train data get')
 train_dataloader = DataLoader(train_data, sampler=SequentialSampler(train_data), 
                         batch_size=args.batch_size, pin_memory=False, num_workers=0)
+logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
                         batch_size=args.batch_size, pin_memory=False, num_workers=0)
+logging.info('valid data loader get')
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
                         batch_size=args.batch_size, pin_memory=False, num_workers=0)#, sampler=RandomSampler(test_data)
-logging.info('data loaded')
+logging.info('test data loader get')
 
 # %%
 
