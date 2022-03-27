@@ -63,8 +63,8 @@ args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ip
 # %%
 import wandb
 os.environ['WANDB_API_KEY']='a166474b1b7ad33a0549adaaec19a2f6d3f91d87'
-os.environ['WANDB_NAME']='withoutAandt5baseandbatch64'
-os.environ['WANDB_NOTES']='train without A,withoutAandt53bandbatch64 '
+os.environ['WANDB_NAME']='t5small3090'
+os.environ['WANDB_NOTES']='train without A,withoutAandt5smallandbatch64 '
 wandb.init(project="my-awesome-project",config=args)
 
 
