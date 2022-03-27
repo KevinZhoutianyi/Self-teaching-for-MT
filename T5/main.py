@@ -96,13 +96,13 @@ torch.cuda.manual_seed(seed_)
 
 # %%
 
-pretrained  =  T5ForConditionalGeneration.from_pretrained("t5-base")
+pretrained  =  T5ForConditionalGeneration.from_pretrained("t5-3b")
 torch.save(pretrained,'T5BASE.pt')
 
 # %%
 # Load the tokenizer.
 import random
-tokenizer = T5Tokenizer.from_pretrained("t5-base")
+tokenizer = T5Tokenizer.from_pretrained("t5-3b")
 
 criterion = torch.nn.CrossEntropyLoss( reduction='none')#,ignore_index = tokenizer.pad_token_id)#
 # dataset = dataset.shuffle(seed=seed_)
