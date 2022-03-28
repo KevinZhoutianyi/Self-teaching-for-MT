@@ -43,7 +43,7 @@ parser.add_argument('--epochs', type=int,                       default=50,     
 parser.add_argument('--pre_epochs', type=int,                   default=3,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
 
-parser.add_argument('--w_lr', type=float,                       default=3e-8,   help='learning rate for w')
+parser.add_argument('--w_lr', type=float,                       default=3e-4,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=3e-4,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
@@ -157,7 +157,7 @@ A = A.cuda()
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_w_in_main')
 model_w = model_w.cuda()
-w_optimizer = torch.optim.Adam(model_w.parameters(),args.w_lr)#,momentum=args.momentum,weight_decay=args.decay)
+w_optimizer = torch.optim.AdamW(model_w.parameters(),args.w_lr)#,momentum=args.momentum,weight_decay=args.decay)
 scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0.5)
 # scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
@@ -165,7 +165,7 @@ scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0
 
 model_v = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_v_in_main')
 model_v = model_v.cuda()
-v_optimizer = torch.optim.Adam(model_v.parameters(),args.v_lr)#,momentum=args.momentum,weight_decay=args.decay)
+v_optimizer = torch.optim.AdamW(model_v.parameters(),args.v_lr)#,momentum=args.momentum,weight_decay=args.decay)
 scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0.5)
 # scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
