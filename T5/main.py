@@ -287,7 +287,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             batch_loss_w += loss_w.item()
             w_trainloss_acc+=loss_w.item()
             loss_w.backward()
-            # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
+            nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
             w_optimizer.step()
         # if epoch >= args.pre_epochs and epoch <= args.epochs:
         #     v_optimizer.zero_grad()
@@ -299,7 +299,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         #     batch_loss_v += v_loss.item()
         #     v_trainloss_acc+=v_loss.item()
         #     v_loss.backward()
-        #     # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+            # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
         #     v_optimizer.step()     
         if(step*args.batch_size%500==0):
             logging.info(f"{step*args.batch_size*100/(args.train_num_points)}%,wtrainloss{loss_w}")
