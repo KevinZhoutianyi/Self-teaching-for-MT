@@ -100,11 +100,14 @@ class T5(nn.Module):
         2. we will use logits with criterion to get loss, so we cannot use CE(ignoreindex==padindex)
         '''
         batch_size = target_ids.shape[0]
-        logits = (self(input_ids, input_attn, target_ids = target_ids, target_attn = target_attn)).logits
-        loss_seq = self._criterion(logits.view(-1,logits.shape[-1]), target_ids.view(-1)).view(batch_size,-1)
-        mul = loss_seq*target_attn
-        loss_vec = torch.mean(mul,-1).squeeze()
-        return loss_vec
+        target_ids_ = copy.deepcopy(target_ids)
+        target_ids_[target_ids == self.tokenizer.pad_token_id] = -100
+        temp = (self(input_ids, input_attn, target_ids = target_ids_, target_attn = target_attn))
+        logits = temp.logits
+        loss_seq = self._criterion(logits.view(-1,logits.shape[-1]), target_ids_.view(-1)).view(batch_size,-1)
+        count = torch.sum(target_attn,-1).squeeze_()
+        loss_vec_ = torch.sum(loss_seq,-1)/count
+        return loss_vec_
 
 
     # used for generation of summaries from articles

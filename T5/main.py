@@ -157,7 +157,7 @@ A = A.cuda()
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_w_in_main')
 model_w = model_w.cuda()
-w_optimizer = torch.optim.AdamW(model_w.parameters(),args.w_lr)#,momentum=args.momentum,weight_decay=args.decay)
+w_optimizer = torch.optim.Adam(model_w.parameters(),args.w_lr)#,momentum=args.momentum,weight_decay=args.decay)
 scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0.5)
 # scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
@@ -165,7 +165,7 @@ scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0
 
 model_v = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_v_in_main')
 model_v = model_v.cuda()
-v_optimizer = torch.optim.AdamW(model_v.parameters(),args.v_lr)#,momentum=args.momentum,weight_decay=args.decay)
+v_optimizer = torch.optim.Adam(model_v.parameters(),args.v_lr)#,momentum=args.momentum,weight_decay=args.decay)
 scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0.5)
 # scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
@@ -194,32 +194,25 @@ def my_test(_dataloader,model,epoch):
             acc+= ls
             counter+= 1
             pre = model.generate(test_dataloaderx)
-            # print('pre',pre)
-            try:
-                x_decoded = tokenizer.batch_decode(test_dataloaderx,skip_special_tokens=True)
-                pred_decoded = tokenizer.batch_decode(pre,skip_special_tokens=True)
-                label_decoded =  tokenizer.batch_decode(test_dataloadery,skip_special_tokens=True)
+            x_decoded = tokenizer.batch_decode(test_dataloaderx,skip_special_tokens=True)
+            pred_decoded = tokenizer.batch_decode(pre,skip_special_tokens=True)
+            label_decoded =  tokenizer.batch_decode(test_dataloadery,skip_special_tokens=True)
+            
+            pred_str = [x.replace('.', '')  for x in pred_decoded]
+            label_str = [[x.replace('.', '')] for x in label_decoded]
+            pred_list = [x.replace('.', '').split()  for x in pred_decoded]
+            label_list = [[x.replace('.', '').split()] for x in label_decoded]
+            #pred_str = [x.translate( str.maketrans('', '', string.punctuation)) for x in pred_decoded] 
+            # label_str = [[x.translate( str.maketrans('', '', string.punctuation))] for x in label_decoded]
+            # pred_list = [x.translate( str.maketrans('', '', string.punctuation)).split()  for x in pred_decoded]#:improve
+            # label_list = [[x.translate( str.maketrans('', '', string.punctuation)).split()] for x in label_decoded]#:improve
+            if  step%100==0:
+                logging.info(f'x_decoded[:2]:{x_decoded[:2]}')
+                logging.info(f'pred_decoded[:2]:{pred_decoded[:2]}')
+                logging.info(f'label_decoded[:2]:{label_decoded[:2]}')
+            metric_sacrebleu.add_batch(predictions=pred_str, references=label_str)
+            metric_bleu.add_batch(predictions=pred_list, references=label_list)
                 
-                pred_str = [x.replace('.', '')  for x in pred_decoded]
-                label_str = [[x.replace('.', '')] for x in label_decoded]
-                pred_list = [x.replace('.', '').split()  for x in pred_decoded]
-                label_list = [[x.replace('.', '').split()] for x in label_decoded]
-                #pred_str = [x.translate( str.maketrans('', '', string.punctuation)) for x in pred_decoded] 
-                # label_str = [[x.translate( str.maketrans('', '', string.punctuation))] for x in label_decoded]
-                # pred_list = [x.translate( str.maketrans('', '', string.punctuation)).split()  for x in pred_decoded]#:improve
-                # label_list = [[x.translate( str.maketrans('', '', string.punctuation)).split()] for x in label_decoded]#:improve
-                if  step%100==0:
-                    logging.info(f'x_decoded[:2]:{x_decoded[:2]}')
-                    logging.info(f'pred_decoded[:2]:{pred_decoded[:2]}')
-                    logging.info(f'label_decoded[:2]:{label_decoded[:2]}')
-                metric_sacrebleu.add_batch(predictions=pred_str, references=label_str)
-                metric_bleu.add_batch(predictions=pred_list, references=label_list)
-                
-               
-            except Exception as ex:
-                print(tokenizer.batch_decode(pre),[[x] for x in tokenizer.batch_decode(test_dataloadery)])
-                raise Exception(ex)
-        # logging.info(f"loss:{ls}")
     sacrebleu_score = metric_sacrebleu.compute()
     bleu_score = metric_bleu.compute()
     logging.info('%s sacreBLEU : %f',model.name,sacrebleu_score['score'])#TODO:bleu may be wrong cuz max length
@@ -287,7 +280,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             batch_loss_w += loss_w.item()
             w_trainloss_acc+=loss_w.item()
             loss_w.backward()
-            nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
+            # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
             w_optimizer.step()
         # if epoch >= args.pre_epochs and epoch <= args.epochs:
         #     v_optimizer.zero_grad()
@@ -342,6 +335,9 @@ torch.save(model_v,'./model/'+now+'model_w.pt')
         
     
 
+
+
+# %%
 
 
 
