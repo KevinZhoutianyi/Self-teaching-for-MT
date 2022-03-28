@@ -183,7 +183,8 @@ def my_test(_dataloader,model,epoch):
     metric_sacrebleu =  load_metric('sacrebleu')
     metric_bleu =  load_metric('bleu')
 
-    for step, batch in enumerate(tqdm(_dataloader,desc ="test for epoch"+str(epoch))):
+    # for step, batch in enumerate(tqdm(_dataloader,desc ="test for epoch"+str(epoch))):
+    for step, batch in enumerate(_dataloader):
         test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()
         test_dataloaderx_attn = Variable(batch[1], requires_grad=False).cuda()
         test_dataloadery = Variable(batch[2], requires_grad=False).cuda()
@@ -229,6 +230,8 @@ def my_test(_dataloader,model,epoch):
     writer.add_scalar(model.name+"/BLEU",bleu_score['bleu'], global_step=epoch)
     
     wandb.log({'sacreBLEU'+model.name: sacrebleu_score['score']})
+    
+    wandb.log({'test_loss'+model.name: acc/counter})
     model.train()
         
 
@@ -242,7 +245,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     synsize = args.train_w_synthetic_num_points
     vsize = args.train_v_num_points 
     Asize = args.train_A_num_points 
-    for step, batch in enumerate(tqdm(_dataloader, desc ="train for epoch"+str(epoch))) :
+    # for step, batch in enumerate(tqdm(_dataloader, desc ="train for epoch"+str(epoch))) :
+    for step, batch in enumerate(_dataloader) :
         counter+=1
         batch_loss_w, batch_loss_v = 0, 0
         
@@ -297,7 +301,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         #     v_loss.backward()
         #     # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
         #     v_optimizer.step()     
-                
+        if(step*args.batch_size%500==0):
+            logging.info(f"{step*args.batch_size*100/(args.train_num_points)}%")
   
     logging.info(str(("Attention Weights A : ", A.alpha)))
     
@@ -337,9 +342,6 @@ torch.save(model_v,'./model/'+now+'model_w.pt')
         
     
 
-
-
-# %%
 
 
 
