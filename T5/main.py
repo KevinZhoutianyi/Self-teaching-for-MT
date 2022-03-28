@@ -183,7 +183,7 @@ def my_test(_dataloader,model,epoch):
     metric_sacrebleu =  load_metric('sacrebleu')
     metric_bleu =  load_metric('bleu')
 
-    for step, batch in enumerate(tqdm(_dataloader),desc ="test for epoch"+str(epoch)):
+    for step, batch in enumerate(tqdm(_dataloader,desc ="test for epoch"+str(epoch))):
         test_dataloaderx = Variable(batch[0], requires_grad=False).cuda()
         test_dataloaderx_attn = Variable(batch[1], requires_grad=False).cuda()
         test_dataloadery = Variable(batch[2], requires_grad=False).cuda()
