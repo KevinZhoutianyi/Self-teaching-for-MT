@@ -4,7 +4,8 @@
 seed_ = 2
 max_length = 512
 target_language = 'de'
-modelname="t5-small"
+modelname="t5-base"
+expname='test'
 
 
 # valid_num_points = 1000
