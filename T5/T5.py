@@ -1,6 +1,5 @@
 from cProfile import label
 import os
-from pyexpat import model
 import random
 import numpy as np
 import gc
@@ -73,15 +72,12 @@ class T5(nn.Module):
         out_emb = self.embedding(target_ids)/self.enc_emb_scale
         inp_emb = self.embedding(input_ids)/self.enc_emb_scale
 
-        temp = self.model(inputs_embeds = inp_emb, attention_mask = input_attn, decoder_inputs_embeds   = out_emb, decoder_attention_mask = target_attn, return_dict=True)
-        logits = temp.logits
-        model_loss = temp.loss
-        # print('model_loss',model_loss)
+        logits = self.model(inputs_embeds = inp_emb, attention_mask = input_attn, decoder_inputs_embeds   = out_emb, decoder_attention_mask = target_attn, return_dict=True).logits
+
         logits = logits[:,:,:32100]
         loss = self._criterion(logits,target_ids)
         loss = loss[target_ids[:, 0] != 1]#get rid of padding loss
         loss = torch.mean(loss)
-        # print('myloss',loss)
         return loss
 
 
@@ -104,16 +100,11 @@ class T5(nn.Module):
         2. we will use logits with criterion to get loss, so we cannot use CE(ignoreindex==padindex)
         '''
         batch_size = target_ids.shape[0]
-        temp = (self(input_ids, input_attn, target_ids = target_ids, target_attn = target_attn))
-
-        logits = temp.logits
-        # model_loss = temp.loss
-
+        logits = (self(input_ids, input_attn, target_ids = target_ids, target_attn = target_attn)).logits
         loss_seq = self._criterion(logits.view(-1,logits.shape[-1]), target_ids.view(-1)).view(batch_size,-1)
         mul = loss_seq*target_attn
-        # loss_vec = torch.mean(mul,-1).squeeze()
-        loss_vec_ = torch.mean(loss_seq,-1).squeeze()
-        return loss_vec_
+        loss_vec = torch.mean(mul,-1).squeeze()
+        return loss_vec
 
 
     # used for generation of summaries from articles

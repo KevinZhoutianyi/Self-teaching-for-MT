@@ -5,7 +5,7 @@ seed_ = 2
 max_length = 512
 target_language = 'de'
 modelname="t5-base"
-expname='batchsize32_noignorepad'
+expname='batchsize32_ignorepad_lr1-7'
 
 
 # valid_num_points = 1000
