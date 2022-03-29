@@ -40,7 +40,7 @@ class Embedding_(torch.nn.Module):
 
 class T5(nn.Module):
     
-    def __init__(self, criterion, tokenizer,name='unknown'):
+    def __init__(self, criterion, tokenizer,args,name='unknown'):
         super(T5, self).__init__()
         self.name = name
         self.tokenizer = tokenizer
@@ -49,7 +49,7 @@ class T5(nn.Module):
         
         self._criterion = criterion
 
-        self.model = torch.load(modelname+'.pt')
+        self.model = torch.load(args.model_name+'.pt')
         self.encoder = self.model.get_encoder()
         self.embedding = Embedding_(self.encoder.embed_tokens).requires_grad_()#convert token to 512dimensions vector
         self.enc_emb_scale = 1
@@ -130,7 +130,7 @@ class T5(nn.Module):
 
         # there is embedding layer and the summarization head that we will not train on 
         # we just train on the encoder and the decoder weights 
-        model_new = T5(self._criterion, self.tokenizer).cuda()
+        model_new = T5(self._criterion, self.tokenizer, args = self.args).cuda()
         
         # hence we deep copy all the weights and update the required ones
         # use the first order approximation for the summarization head

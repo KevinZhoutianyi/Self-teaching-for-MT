@@ -159,7 +159,7 @@ A = attention_params(train_w_num_points_len)#half of train regarded as u
 A = A.cuda()
 
 # TODO: model loaded from saved model
-model_w = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_w_in_main')
+model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_w_in_main')
 model_w = model_w.cuda()
 w_optimizer = torch.optim.AdamW(model_w.parameters(),args.w_lr)#,momentum=args.momentum,weight_decay=args.decay)
 scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0.5)
@@ -167,7 +167,7 @@ scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0
 
 
 
-model_v = T5(criterion=criterion, tokenizer= tokenizer, name = 'model_v_in_main')
+model_v = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
 model_v = model_v.cuda()
 v_optimizer = torch.optim.AdamW(model_v.parameters(),args.v_lr)#,momentum=args.momentum,weight_decay=args.decay)
 scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0.5)
@@ -282,8 +282,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         if  epoch <= args.epochs and epoch <= args.epochs:
             
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
-            loss_w = loss_w/grad_acc_count
             w_trainloss_acc+=loss_w.item()
+            loss_w = loss_w.item()/grad_acc_count
             loss_w.backward()
             # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
             if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len):
