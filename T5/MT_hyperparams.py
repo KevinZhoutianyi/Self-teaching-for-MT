@@ -4,7 +4,7 @@
 seed_ = 2
 max_length = 512
 target_language = 'de'
-modelname="t5-base"
+modelname="t5-small"
 expname='24Wlargerlr'
 
 
