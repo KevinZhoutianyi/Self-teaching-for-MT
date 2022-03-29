@@ -32,13 +32,16 @@ parser.add_argument('--valid_num_points', type=int,             default = 1000, 
 parser.add_argument('--train_num_points', type=int,             default = 4000, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=16,      help='train_w_num_points for each batch')
-parser.add_argument('--train_w_synthetic_num_points', type=int, default=8,      help='train_w_synthetic_num_points for each batch')
+parser.add_argument('--train_w_num_points', type=int,           default=12,      help='train_w_num_points for each batch')
+parser.add_argument('--train_w_synthetic_num_points', type=int, default=12,      help='train_w_synthetic_num_points for each batch')
 parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
 parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
+parser.add_argument('--model_name', type=str,                   default='t5-small',      help='gpu device id')
+parser.add_argument('--exp_name', type=str,                     default='t5base test',      help='gpu device id')
+
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=3,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
@@ -64,7 +67,7 @@ args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ip
 # %%
 import wandb
 os.environ['WANDB_API_KEY']='a166474b1b7ad33a0549adaaec19a2f6d3f91d87'
-os.environ['WANDB_NAME']=expname
+os.environ['WANDB_NAME']=args.exp_name
 # os.environ['WANDB_NOTES']='train without A,withoutAandt5smallandbatch64 '
 wandb.init(project="my-awesome-project",config=args)
 
@@ -97,7 +100,7 @@ cudnn.enabled=True
 torch.cuda.manual_seed(seed_)
 
 # %%
-
+modelname = args.model_name
 pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
 torch.save(pretrained,modelname+'.pt')
 
