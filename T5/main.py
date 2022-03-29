@@ -32,18 +32,19 @@ parser.add_argument('--valid_num_points', type=int,             default = 1000, 
 parser.add_argument('--train_num_points', type=int,             default = 4000, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=24,      help='train_w_num_points for each batch')
-parser.add_argument('--train_w_synthetic_num_points', type=int, default=4,      help='train_w_synthetic_num_points for each batch')
-parser.add_argument('--train_v_num_points', type=int,           default=2,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=2,      help='train_A_num_points decay for each batch')
+parser.add_argument('--train_w_num_points', type=int,           default=16,      help='train_w_num_points for each batch')
+parser.add_argument('--train_w_synthetic_num_points', type=int, default=8,      help='train_w_synthetic_num_points for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=3,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
+parser.add_argument('--grad_acc_count', type=float,             default=4,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=3e-3,   help='learning rate for w')
+parser.add_argument('--w_lr', type=float,                       default=3e-5,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=3e-4,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
@@ -239,6 +240,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     vsize = args.train_v_num_points 
     Asize = args.train_A_num_points 
     # for step, batch in enumerate(tqdm(_dataloader, desc ="train for epoch"+str(epoch))) :
+    grad_acc_count = args.grad_acc_count
+    loader_len = len(_dataloader)
     for step, batch in enumerate(_dataloader) :
         counter+=1
         batch_loss_w, batch_loss_v = 0, 0
@@ -275,13 +278,14 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         
         if  epoch <= args.epochs and epoch <= args.epochs:
             
-            w_optimizer.zero_grad()
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
-            batch_loss_w += loss_w.item()
+            loss_w = loss_w/grad_acc_count
             w_trainloss_acc+=loss_w.item()
             loss_w.backward()
             # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
-            w_optimizer.step()
+            if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len):
+                w_optimizer.step()
+                w_optimizer.zero_grad()
         # if epoch >= args.pre_epochs and epoch <= args.epochs:
         #     v_optimizer.zero_grad()
         #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
