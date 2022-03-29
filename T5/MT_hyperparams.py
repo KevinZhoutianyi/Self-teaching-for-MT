@@ -5,7 +5,7 @@ seed_ = 2
 max_length = 512
 target_language = 'de'
 modelname="t5-small"
-expname='test'
+expname='batch grad acc'
 
 
 # valid_num_points = 1000
