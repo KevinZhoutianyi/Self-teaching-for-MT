@@ -27,7 +27,6 @@ import string
 # %%
 parser = argparse.ArgumentParser("main")
 
-
 parser.add_argument('--valid_num_points', type=int,             default = 1000, help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 4000, help='train data number')
 
@@ -40,7 +39,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='gpu device id')
-parser.add_argument('--exp_name', type=str,                     default='cliptest',      help='gpu device id')
+parser.add_argument('--exp_name', type=str,                     default='changeseed',      help='gpu device id')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=3,      help='train model W for x epoch first')
@@ -162,16 +161,16 @@ A = A.cuda()
 model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_w_in_main')
 model_w = model_w.cuda()
 w_optimizer = torch.optim.AdamW(model_w.parameters(),args.w_lr)#,momentum=args.momentum,weight_decay=args.decay)
-# scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0.5)
-scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
+scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=1, gamma=0.9)
+# scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
 
 model_v = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
 model_v = model_v.cuda()
 v_optimizer = torch.optim.AdamW(model_v.parameters(),args.v_lr)#,momentum=args.momentum,weight_decay=args.decay)
-# scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0.5)
-scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
+scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=1, gamma=0.9)
+# scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
 
