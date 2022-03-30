@@ -32,10 +32,10 @@ parser.add_argument('--valid_num_points', type=int,             default = 1000, 
 parser.add_argument('--train_num_points', type=int,             default = 4000, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
-parser.add_argument('--train_w_synthetic_num_points', type=int, default=8,      help='train_w_synthetic_num_points for each batch')
-parser.add_argument('--train_v_num_points', type=int,           default=8,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=8,      help='train_A_num_points decay for each batch')
+parser.add_argument('--train_w_num_points', type=int,           default=12,      help='train_w_num_points for each batch')
+parser.add_argument('--train_w_synthetic_num_points', type=int, default=12,      help='train_w_synthetic_num_points for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
@@ -45,9 +45,9 @@ parser.add_argument('--exp_name', type=str,                     default='times10
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=3,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
-parser.add_argument('--grad_acc_count', type=float,             default=1,      help='gradient accumulate steps')
+parser.add_argument('--grad_acc_count', type=float,             default=16,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=2e-5,   help='learning rate for w')
+parser.add_argument('--w_lr', type=float,                       default=1e-4,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=3e-4,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
@@ -142,15 +142,15 @@ target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
 logging.info('train data get')
 train_dataloader = DataLoader(train_data, sampler=SequentialSampler(train_data), 
-                        batch_size=args.batch_size, pin_memory=False, num_workers=0)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
 logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
-                        batch_size=args.batch_size, pin_memory=False, num_workers=0)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
 logging.info('valid data loader get')
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
-                        batch_size=args.batch_size, pin_memory=False, num_workers=0)#, sampler=RandomSampler(test_data)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=2)#, sampler=RandomSampler(test_data)
 logging.info('test data loader get')
 
 # %%
@@ -162,16 +162,16 @@ A = A.cuda()
 model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_w_in_main')
 model_w = model_w.cuda()
 w_optimizer = torch.optim.AdamW(model_w.parameters(),args.w_lr)#,momentum=args.momentum,weight_decay=args.decay)
-scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0.5)
-# scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
+# scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=30, gamma=0.5)
+scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
 
 model_v = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
 model_v = model_v.cuda()
 v_optimizer = torch.optim.AdamW(model_v.parameters(),args.v_lr)#,momentum=args.momentum,weight_decay=args.decay)
-scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0.5)
-# scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
+# scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=30, gamma=0.5)
+scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
 
@@ -283,7 +283,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
             w_trainloss_acc+=loss_w.item()
-            loss_w = loss_w*100/grad_acc_count
+            loss_w = loss_w/grad_acc_count
             loss_w.backward()
             # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
             if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len):
