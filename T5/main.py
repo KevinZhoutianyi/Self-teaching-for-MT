@@ -40,7 +40,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='gpu device id')
-parser.add_argument('--exp_name', type=str,                     default='smallerlr,largergradacc,largerbs,numworkderpinmem',      help='gpu device id')
+parser.add_argument('--exp_name', type=str,                     default='times100loss',      help='gpu device id')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=3,      help='train model W for x epoch first')
@@ -285,7 +285,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             w_trainloss_acc+=loss_w.item()
             loss_w = loss_w/grad_acc_count
             loss_w.backward()
-            # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
+            nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
             if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len):
                 w_optimizer.step()
                 w_optimizer.zero_grad()
@@ -302,7 +302,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
         #     v_optimizer.step()     
         if(step*args.batch_size%500==0):
-            logging.info(f"{step*args.batch_size*100/(args.train_num_points)}%,wtrainloss{loss_w}")
+            logging.info(f"{step*args.batch_size*100/(args.train_num_points)}%,wtrainloss{loss_w*grad_acc_count}")
   
     logging.info(str(("Attention Weights A : ", A.alpha)))
     
