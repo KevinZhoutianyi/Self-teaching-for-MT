@@ -45,10 +45,10 @@ parser.add_argument('--exp_name', type=str,                     default='adafact
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
-parser.add_argument('--grad_clip', type=float,                  default=10,      help='gradient clipping')
+parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=1,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=1e-3,   help='learning rate for w')
+parser.add_argument('--w_lr', type=float,                       default=2e-4,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
