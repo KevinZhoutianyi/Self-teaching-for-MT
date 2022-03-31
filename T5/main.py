@@ -7,7 +7,7 @@ warnings.filterwarnings("ignore")
 from T5 import *
 from datasets import load_dataset,load_metric
 from transformers import T5Tokenizer
-
+import torch_optimizer as optim
 from transformers.optimization import Adafactor, AdafactorSchedule
 from MT_hyperparams import *
 import torch.backends.cudnn as cudnn
@@ -41,14 +41,14 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='gpu device id')
-parser.add_argument('--exp_name', type=str,                     default='adafactor',      help='gpu device id')
+parser.add_argument('--exp_name', type=str,                     default='adafactor gradacc1',      help='gpu device id')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=10,      help='gradient clipping')
-parser.add_argument('--grad_acc_count', type=float,             default=16,      help='gradient accumulate steps')
+parser.add_argument('--grad_acc_count', type=float,             default=1,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=1e-3,   help='learning rate for w')
+parser.add_argument('--w_lr', type=float,                       default=1e-4,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
@@ -61,6 +61,8 @@ parser.add_argument('--syndata_loss_ratio', type=float,         default=0.5,    
 
 parser.add_argument('--valid_begin', type=int,                  default=0,      help='whether valid before train')
 parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
+
+
 
 
 args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
@@ -167,8 +169,8 @@ A = A.cuda()
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_w_in_main')
 model_w = model_w.cuda()
-w_optimizer = Adafactor(model_w.parameters(), scale_parameter=False, relative_step=False, warmup_init=False, lr = args.w_lr)#torch.optim.AdaFactor (model_w.parameters(),args.w_lr,scale_parameter=False, relative_step=False)#,momentum=args.momentum,weight_decay=args.decay)
-scheduler_w  = AdafactorSchedule(w_optimizer)#torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=1, gamma=0.9)
+w_optimizer = optim.Adafactor(model_w.parameters(),lr=args.w_lr,scale_parameter=False, relative_step=False)#torch.optim.AdaFactor (model_w.parameters(),args.w_lr,scale_parameter=False, relative_step=False)#,momentum=args.momentum,weight_decay=args.decay)
+scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=1, gamma=0.9)
 # scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
@@ -315,6 +317,9 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     logging.info(str(("Attention Weights A : ", A.alpha)))
     
     return w_trainloss_acc,v_trainloss_acc
+
+
+# %%
 
 
 # %%
