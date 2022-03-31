@@ -27,19 +27,19 @@ import string
 # %%
 parser = argparse.ArgumentParser("main")
 
-parser.add_argument('--valid_num_points', type=int,             default = 1000, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 4000, help='train data number')
+parser.add_argument('--valid_num_points', type=int,             default = 500, help='validation data number')
+parser.add_argument('--train_num_points', type=int,             default = 2000, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=12,      help='train_w_num_points for each batch')
-parser.add_argument('--train_w_synthetic_num_points', type=int, default=12,      help='train_w_synthetic_num_points for each batch')
+parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
+parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
+parser.add_argument('--train_w_synthetic_num_points', type=int, default=4,      help='train_w_synthetic_num_points for each batch')
 parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
 parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='gpu device id')
-parser.add_argument('--exp_name', type=str,                     default='clip5andtrainv',      help='gpu device id')
+parser.add_argument('--exp_name', type=str,                     default='clip',      help='gpu device id')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
@@ -278,7 +278,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             architect.step(input_w,  output_w,input_w_attn, output_w_attn, w_optimizer, input_syn, input_syn_attn,input_A_v, input_A_v_attn, output_A_v, 
                 output_A_v_attn, v_optimizer, attn_idx, lr_w, lr_v)
         
-        if  epoch <= args.epochs and epoch <= args.epochs:
+        if  epoch <= args.epochs:
             
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
             w_trainloss_acc+=loss_w.item()
@@ -288,18 +288,20 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len):
                 w_optimizer.step()
                 w_optimizer.zero_grad()
-        if epoch >= args.pre_epochs and epoch <= args.epochs:
-            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
-            loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
-            v_loss =  (args.syndata_loss_ratio*loss_aug+args.traindata_loss_ratio*loss)/num_batch
-            v_trainloss_acc+=v_loss.item()
-            v_loss = v_loss/grad_acc_count
-            v_loss.backward()
-            nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-            
-            if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
-                v_optimizer.step()  
-                v_optimizer.zero_grad()  
+
+        # if epoch >= args.pre_epochs and epoch <= args.epochs:
+        #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
+        #     loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
+        #     v_loss =  (args.syndata_loss_ratio*loss_aug+args.traindata_loss_ratio*loss)/num_batch
+        #     v_trainloss_acc+=v_loss.item()
+        #     v_loss = v_loss/grad_acc_count
+        #     v_loss.backward()
+        #     nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+        #     if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
+        #         v_optimizer.step()  
+        #         v_optimizer.zero_grad()  
+
+
         if(step*args.batch_size%500==0):
             logging.info(f"{step*args.batch_size*100/(args.train_num_points)}%,wtrainloss{loss_w*grad_acc_count}")
   
@@ -311,7 +313,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
 # %%
 if(args.valid_begin==1):
     my_test(valid_dataloader,model_w,-1) #before train
-    my_test(valid_dataloader,model_v,-1)  
+    # my_test(valid_dataloader,model_v,-1)  
 for epoch in range(args.epochs):
     lr_w = scheduler_w.get_lr()[0]
     lr_v = scheduler_v.get_lr()[0]
@@ -331,7 +333,7 @@ for epoch in range(args.epochs):
 
     
     my_test(valid_dataloader,model_w,epoch) 
-    my_test(valid_dataloader,model_v,epoch)  
+    # my_test(valid_dataloader,model_v,epoch)  
 
 torch.save(model_v,'./model/'+now+'model_v.pt')
 torch.save(model_v,'./model/'+now+'model_w.pt')
@@ -341,9 +343,6 @@ torch.save(model_v,'./model/'+now+'model_w.pt')
         
     
 
-
-
-# %%
 
 
 
