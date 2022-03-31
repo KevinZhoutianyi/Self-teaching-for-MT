@@ -7,6 +7,8 @@ warnings.filterwarnings("ignore")
 from T5 import *
 from datasets import load_dataset,load_metric
 from transformers import T5Tokenizer
+
+from transformers.optimization import Adafactor, AdafactorSchedule
 from MT_hyperparams import *
 import torch.backends.cudnn as cudnn
 from utils import *
@@ -46,8 +48,8 @@ parser.add_argument('--pre_epochs', type=int,                   default=0,      
 parser.add_argument('--grad_clip', type=float,                  default=10,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=16,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=2e-5,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=2e-5,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=1e-3,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -157,19 +159,24 @@ logging.info('test data loader get')
 A = attention_params(train_w_num_points_len)#half of train regarded as u
 A = A.cuda()
 
+
+
+# optimizer = Adafactor(model.parameters(), scale_parameter=True, relative_step=True, warmup_init=True, lr=None)
+# lr_scheduler = AdafactorSchedule(optimizer)
+
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_w_in_main')
 model_w = model_w.cuda()
-w_optimizer = torch.optim.AdamW(model_w.parameters(),args.w_lr)#,momentum=args.momentum,weight_decay=args.decay)
-scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=1, gamma=0.9)
+w_optimizer = Adafactor(model_w.parameters(), scale_parameter=False, relative_step=False, warmup_init=False, lr = args.w_lr)#torch.optim.AdaFactor (model_w.parameters(),args.w_lr,scale_parameter=False, relative_step=False)#,momentum=args.momentum,weight_decay=args.decay)
+scheduler_w  = AdafactorSchedule(w_optimizer)#torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=1, gamma=0.9)
 # scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
 
 model_v = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
 model_v = model_v.cuda()
-v_optimizer = torch.optim.AdamW(model_v.parameters(),args.v_lr)#,momentum=args.momentum,weight_decay=args.decay)
-scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=1, gamma=0.9)
+v_optimizer =Adafactor(model_v.parameters(), scale_parameter=False, relative_step=False, warmup_init=False, lr = args.w_lr)#torch.optim.AdaFactor(model_v.parameters(),args.v_lr,scale_parameter=False, relative_step=False)#,momentum=args.momentum,weight_decay=args.decay)
+scheduler_v  = AdafactorSchedule(v_optimizer)#torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=1, gamma=0.9)
 # scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
@@ -343,6 +350,9 @@ torch.save(model_v,'./model/'+now+'model_w.pt')
         
     
 
+
+
+# %%
 
 
 

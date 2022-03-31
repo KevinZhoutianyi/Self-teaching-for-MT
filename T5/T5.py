@@ -99,6 +99,8 @@ class T5(nn.Module):
         1. we need loss vector, so we cant use self().loss
         2. we will use logits with criterion to get loss, so we cannot use CE(ignoreindex==padindex)
         '''
+        # print(input_ids)
+        # print(target_ids)
         batch_size = target_ids.shape[0]
         target_ids_ = copy.deepcopy(target_ids)
         target_ids_[target_ids == self.tokenizer.pad_token_id] = -100
