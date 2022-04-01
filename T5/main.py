@@ -32,16 +32,16 @@ parser = argparse.ArgumentParser("main")
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 2000, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
+parser.add_argument('--batch_size', type=int,                   default=24,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
-parser.add_argument('--train_w_synthetic_num_points', type=int, default=4,      help='train_w_synthetic_num_points for each batch')
-parser.add_argument('--train_v_num_points', type=int,           default=2,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=2,      help='train_A_num_points decay for each batch')
+parser.add_argument('--train_w_synthetic_num_points', type=int, default=2,      help='train_w_synthetic_num_points for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=6,      help='train_v_num_points for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=8,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='gpu device id')
-parser.add_argument('--exp_name', type=str,                     default='adafactor2e-4 16batch',      help='gpu device id')
+parser.add_argument('--exp_name', type=str,                     default='adafactor6e-5 24batch smalldata',      help='gpu device id')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
