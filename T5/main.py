@@ -32,16 +32,17 @@ parser = argparse.ArgumentParser("main")
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 2000, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=24,     help='Batch size')
+parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
-parser.add_argument('--train_w_synthetic_num_points', type=int, default=2,      help='train_w_synthetic_num_points for each batch')
-parser.add_argument('--train_v_num_points', type=int,           default=6,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=8,      help='train_A_num_points decay for each batch')
+parser.add_argument('--train_w_synthetic_num_points', type=int, default=4,      help='train_w_synthetic_num_points for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=2,      help='train_v_num_points for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=2,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='gpu device id')
-parser.add_argument('--exp_name', type=str,                     default='adafactor6e-5 24batch smalldata',      help='gpu device id')
+parser.add_argument('--exp_name', type=str,                     default='adafactor6e-5 16batch',      help='gpu device id')
+parser.add_argument('--rep_num', type=int,                      default='25',      help='howmany step report once')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
@@ -149,11 +150,11 @@ train_dataloader = DataLoader(train_data, sampler=SequentialSampler(train_data),
 logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
-                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
+                        batch_size=16, pin_memory=True, num_workers=2)
 logging.info('valid data loader get')
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
-                        batch_size=args.batch_size, pin_memory=True, num_workers=2)#, sampler=RandomSampler(test_data)
+                        batch_size=16, pin_memory=True, num_workers=2)#, sampler=RandomSampler(test_data)
 logging.info('test data loader get')
 
 # %%
@@ -162,9 +163,6 @@ A = attention_params(train_w_num_points_len)#half of train regarded as u
 A = A.cuda()
 
 
-
-# optimizer = Adafactor(model.parameters(), scale_parameter=True, relative_step=True, warmup_init=True, lr=None)
-# lr_scheduler = AdafactorSchedule(optimizer)
 
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_w_in_main')
@@ -187,7 +185,6 @@ architect = Architect(model_w, model_v,  A, args)
 
 # %%
 
-from nltk.translate.bleu_score import sentence_bleu,corpus_bleu
 def my_test(_dataloader,model,epoch):
     acc = 0
     counter = 0
@@ -214,17 +211,14 @@ def my_test(_dataloader,model,epoch):
             label_str = [[x.replace('.', '')] for x in label_decoded]
             pred_list = [x.replace('.', '').split()  for x in pred_decoded]
             label_list = [[x.replace('.', '').split()] for x in label_decoded]
-            #pred_str = [x.translate( str.maketrans('', '', string.punctuation)) for x in pred_decoded] 
-            # label_str = [[x.translate( str.maketrans('', '', string.punctuation))] for x in label_decoded]
-            # pred_list = [x.translate( str.maketrans('', '', string.punctuation)).split()  for x in pred_decoded]#:improve
-            # label_list = [[x.translate( str.maketrans('', '', string.punctuation)).split()] for x in label_decoded]#:improve
             if  step%100==0:
                 logging.info(f'x_decoded[:2]:{x_decoded[:2]}')
                 logging.info(f'pred_decoded[:2]:{pred_decoded[:2]}')
                 logging.info(f'label_decoded[:2]:{label_decoded[:2]}')
             metric_sacrebleu.add_batch(predictions=pred_str, references=label_str)
             metric_bleu.add_batch(predictions=pred_list, references=label_list)
-                
+            
+    logging.info('computing score...')            
     sacrebleu_score = metric_sacrebleu.compute()
     bleu_score = metric_bleu.compute()
     logging.info('%s sacreBLEU : %f',model.name,sacrebleu_score['score'])#TODO:bleu may be wrong cuz max length
@@ -237,15 +231,18 @@ def my_test(_dataloader,model,epoch):
     wandb.log({'sacreBLEU'+model.name: sacrebleu_score['score']})
     
     wandb.log({'test_loss'+model.name: acc/counter})
+    del test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,ls,pre,x_decoded,pred_decoded,label_decoded,pred_str,label_str,pred_list,label_list
+    torch.cuda.empty_cache()
     model.train()
         
 
 # %%
 def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_optimizer, lr_w, lr_v, ):
-    
+    objs = AvgrageMeter()
+    top1 = AvgrageMeter()
+    top5 = AvgrageMeter()
     v_trainloss_acc = 0
     w_trainloss_acc = 0
-    counter = 0
     wsize = args.train_w_num_points #now  train_x is [num of batch, datasize], so its seperate batch for the code below
     synsize = args.train_w_synthetic_num_points
     vsize = args.train_v_num_points 
@@ -254,9 +251,6 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     grad_acc_count = args.grad_acc_count
     loader_len = len(_dataloader)
     for step, batch in enumerate(_dataloader) :
-        counter+=1
-        batch_loss_w, batch_loss_v = 0, 0
-        
         train_x = Variable(batch[0], requires_grad=False).cuda()
         train_x_attn = Variable(batch[1], requires_grad=False).cuda()
         train_y = Variable(batch[2], requires_grad=False).cuda()
@@ -297,6 +291,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             # if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len):
             w_optimizer.step()
             w_optimizer.zero_grad()
+            
 
         # if epoch >= args.pre_epochs and epoch <= args.epochs:
         #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
@@ -311,8 +306,12 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         #         v_optimizer.zero_grad()  
 
 
-        if(step*args.batch_size%500==0):
-            logging.info(f"{step*args.batch_size*100/(args.train_num_points)}%,wtrainloss{loss_w*grad_acc_count}")
+
+        progress = 100*(step+1)/loader_len
+        fre = loader_len//args.rep_num
+        print(step,fre)
+        if((step+1)%fre == 0 or (step+1)==loader_len):
+            logging.info(f"{progress}%")
   
     logging.info(str(("Attention Weights A : ", A.alpha)))
     
