@@ -41,7 +41,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=2,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='gpu device id')
-parser.add_argument('--exp_name', type=str,                     default='adafactor5e-5 gradacc1',      help='gpu device id')
+parser.add_argument('--exp_name', type=str,                     default='adafactor5e-5 gradacc1 smallerdata',      help='gpu device id')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
@@ -56,8 +56,8 @@ parser.add_argument('--decay', type=float,                      default=1e-3,   
 parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
 
 
-parser.add_argument('--traindata_loss_ratio', type=float,       default=0.5,    help='human translated data ratio')
-parser.add_argument('--syndata_loss_ratio', type=float,         default=0.5,    help='augmented dataset ratio')
+parser.add_argument('--traindata_loss_ratio', type=float,       default=0.8,    help='human translated data ratio')
+parser.add_argument('--syndata_loss_ratio', type=float,         default=0.2,    help='augmented dataset ratio')
 
 parser.add_argument('--valid_begin', type=int,                  default=0,      help='whether valid before train')
 parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
