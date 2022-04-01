@@ -72,7 +72,7 @@ import wandb
 os.environ['WANDB_API_KEY']='a166474b1b7ad33a0549adaaec19a2f6d3f91d87'
 os.environ['WANDB_NAME']=args.exp_name
 # os.environ['WANDB_NOTES']='train without A,withoutAandt5smallandbatch64 '
-wandb.init(project="my-awesome-project",config=args)
+wandb.init(project="MT",config=args)
 
 
 # %%
@@ -178,7 +178,7 @@ scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=1, gamma=0.
 model_v = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
 model_v = model_v.cuda()
 v_optimizer =Adafactor(model_v.parameters(), scale_parameter=False, relative_step=False, warmup_init=False, lr = args.w_lr)#torch.optim.AdaFactor(model_v.parameters(),args.v_lr,scale_parameter=False, relative_step=False)#,momentum=args.momentum,weight_decay=args.decay)
-scheduler_v  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=1, gamma=0.9)#AdafactorSchedule(v_optimizer)#torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=1, gamma=0.9)
+scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=1, gamma=0.9)#AdafactorSchedule(v_optimizer)#torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=1, gamma=0.9)
 # scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
 
