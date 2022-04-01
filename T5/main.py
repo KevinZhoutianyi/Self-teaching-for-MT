@@ -41,7 +41,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=2,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='gpu device id')
-parser.add_argument('--exp_name', type=str,                     default='adafactor6e-5 16batch',      help='gpu device id')
+parser.add_argument('--exp_name', type=str,                     default='adafactor2e-4 16batch',      help='gpu device id')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='howmany step report once')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
@@ -309,7 +309,6 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
 
         progress = 100*(step+1)/loader_len
         fre = loader_len//args.rep_num
-        print(step,fre)
         if((step+1)%fre == 0 or (step+1)==loader_len):
             logging.info(f"{progress}%")
   
