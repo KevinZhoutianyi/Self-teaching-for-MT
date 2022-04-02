@@ -49,7 +49,7 @@ parser.add_argument('--pre_epochs', type=int,                   default=0,      
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=1,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=6e-5,   help='learning rate for w')
+parser.add_argument('--w_lr', type=float,                       default=6e-6,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=5e-5,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
@@ -60,7 +60,7 @@ parser.add_argument('--momentum', type=float,                   default=0.7,    
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.5,    help='human translated data ratio')
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.5,    help='augmented dataset ratio')
 
-parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
+parser.add_argument('--valid_begin', type=int,                  default=0,      help='whether valid before train')
 parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
 
 
@@ -239,8 +239,6 @@ def my_test(_dataloader,model,epoch):
 # %%
 def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_optimizer, lr_w, lr_v, ):
     objs = AvgrageMeter()
-    top1 = AvgrageMeter()
-    top5 = AvgrageMeter()
     v_trainloss_acc = 0
     w_trainloss_acc = 0
     wsize = args.train_w_num_points #now  train_x is [num of batch, datasize], so its seperate batch for the code below
@@ -285,12 +283,12 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
             w_trainloss_acc+=loss_w.item()
-            loss_w = loss_w/grad_acc_count
             loss_w.backward()
             nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
             # if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len):
             w_optimizer.step()
             w_optimizer.zero_grad()
+            objs.update(loss_w.item(), wsize)
             
 
         # if epoch >= args.pre_epochs and epoch <= args.epochs:
@@ -307,10 +305,10 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
 
 
 
-        progress = 100*(step+1)/loader_len
+        progress = 100*(step)/(loader_len-1)
         fre = loader_len//args.rep_num
-        if((step+1)%fre == 0 or (step+1)==loader_len):
-            logging.info(f"{progress}%")
+        if((step)%fre == 0 or (step)==(loader_len-1)):
+            logging.info(f"{progress:5.3}% \t w_loss_avg:{objs.avg*train_w_num_points_len:^.7f}")
   
     logging.info(str(("Attention Weights A : ", A.alpha)))
     
@@ -318,9 +316,9 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
 
 
 # %%
-if(args.valid_begin==1):
-    my_test(valid_dataloader,model_w,-1) #before train
-    my_test(valid_dataloader,model_v,-1)  
+# if(args.valid_begin==1):
+#     my_test(valid_dataloader,model_w,-1) #before train
+#     my_test(valid_dataloader,model_v,-1)  
 for epoch in range(args.epochs):
     lr_w = scheduler_w.get_lr()[0]
     lr_v = scheduler_v.get_lr()[0]
