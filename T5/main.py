@@ -41,7 +41,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=2,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='gpu device id')
-parser.add_argument('--exp_name', type=str,                     default='adafactor6e-4 16batch 100kdata',      help='gpu device id')
+parser.add_argument('--exp_name', type=str,                     default='adafactor6e-4 16batch wmt16',      help='gpu device id')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='howmany step report once')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
@@ -85,7 +85,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO,
 fh = logging.FileHandler(os.path.join("./log/", now+'.txt'),'w',encoding = "UTF-8")
 fh.setFormatter(logging.Formatter(log_format))
 logging.getLogger().addHandler(fh)
-dataset = load_dataset('wmt14','de-en')
+dataset = load_dataset('wmt16','de-en')
 
 logging.info(args)
 logging.info(dataset)
@@ -140,6 +140,8 @@ attn_idx_list = torch.arange(train_w_num_points_len).cuda()
 logging.info("valid len: %d",len(valid))
 logging.info("test len: %d" ,len(test))
 logging.info(train[2])
+logging.info(valid[2])
+logging.info(test[2])
 
 # %%
 target_language  = 'de'
