@@ -47,7 +47,7 @@ parser.add_argument('--rep_num', type=int,                      default='25',   
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
-parser.add_argument('--grad_acc_count', type=float,             default=1,      help='gradient accumulate steps')
+parser.add_argument('--grad_acc_count', type=float,             default=32,      help='gradient accumulate steps')
 
 parser.add_argument('--w_lr', type=float,                       default=6e-4,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=5e-5,   help='learning rate for v')
@@ -288,8 +288,9 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             loss_w.backward()
             nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
             # if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len):
-            w_optimizer.step()
-            w_optimizer.zero_grad()
+            if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
+                w_optimizer.step()
+                w_optimizer.zero_grad()
             objs.update(loss_w.item(), wsize)
             
 
