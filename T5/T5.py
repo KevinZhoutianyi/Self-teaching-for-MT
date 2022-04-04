@@ -65,10 +65,9 @@ class T5(nn.Module):
         return out
     
     def loss(self, input_ids, input_attn, target_ids, target_attn):
-        # input is distribution , output is just category index
+        # output is distribution , input is just category index
         #targetids are shifted
         batch_size = target_ids.shape[0]
-        
         out_emb = self.embedding(target_ids)/self.enc_emb_scale
         inp_emb = self.embedding(input_ids)/self.enc_emb_scale
 
