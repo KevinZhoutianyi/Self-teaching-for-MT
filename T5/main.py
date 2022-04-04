@@ -286,8 +286,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         
         
         if  epoch <= args.epochs:
-            for p in w_model.parameters():
-                p.requires_grad = True
+            # for p in w_model.parameters():
+            #     p.requires_grad = True
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
             w_trainloss_acc+=loss_w.item()
             loss_w.backward()
@@ -297,25 +297,25 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
                 nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
                 w_optimizer.step()
                 w_optimizer.zero_grad()
-            for p in w_model.parameters():
-                    p.requires_grad = False
+            # for p in w_model.parameters():
+            #         p.requires_grad = False
 
-        if epoch >= args.pre_epochs and epoch <= args.epochs:
+        # if epoch >= args.pre_epochs and epoch <= args.epochs:
             
-            for p in v_model.parameters():
-                p.requires_grad = True
-            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
-            loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
-            v_loss =  (args.syndata_loss_ratio*loss_aug+args.traindata_loss_ratio*loss)/num_batch
-            v_trainloss_acc+=v_loss.item()
-            v_loss.backward()
-            objs_v.update(v_loss.item(), vtrainsize)
-            if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
-                nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-                v_optimizer.step()  
-                v_optimizer.zero_grad() 
-            for p in v_model.parameters():
-                    p.requires_grad = False
+        #     for p in v_model.parameters():
+        #         p.requires_grad = True
+        #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
+        #     loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
+        #     v_loss =  (args.syndata_loss_ratio*loss_aug+args.traindata_loss_ratio*loss)/num_batch
+        #     v_trainloss_acc+=v_loss.item()
+        #     v_loss.backward()
+        #     objs_v.update(v_loss.item(), vtrainsize)
+        #     if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
+        #         nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+        #         v_optimizer.step()  
+        #         v_optimizer.zero_grad() 
+        #     for p in v_model.parameters():
+        #             p.requires_grad = False
         
 
 
