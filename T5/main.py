@@ -42,7 +42,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=2,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='64accsmooth',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='64acc0.1smooth',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='howmany step report once')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
@@ -154,11 +154,11 @@ train_dataloader = DataLoader(train_data, sampler=SequentialSampler(train_data),
 logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
-                        batch_size=8, pin_memory=True, num_workers=4)
+                        batch_size=16, pin_memory=True, num_workers=4)
 logging.info('valid data loader get')
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
-                        batch_size=8, pin_memory=True, num_workers=4)#, sampler=RandomSampler(test_data)
+                        batch_size=16, pin_memory=True, num_workers=4)#, sampler=RandomSampler(test_data)
 logging.info('test data loader get')
 
 # %%
@@ -235,7 +235,7 @@ def my_test(_dataloader,model,epoch):
     wandb.log({'sacreBLEU'+model.name: sacrebleu_score['score']})
     
     wandb.log({'test_loss'+model.name: acc/counter})
-    del test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,ls,pre,x_decoded,pred_decoded,label_decoded,pred_str,label_str,pred_list,label_list
+    del test_dataloaderx,acc,counter,test_dataloaderx_attn,sacrebleu_score,bleu_score,test_dataloadery,test_dataloadery_attn,ls,pre,x_decoded,pred_decoded,label_decoded,pred_str,label_str,pred_list,label_list
     torch.cuda.empty_cache()
     model.train()
         
@@ -360,11 +360,6 @@ for epoch in range(args.epochs):
 
 torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
-     
-   
-   
-        
-    
 
 
 
