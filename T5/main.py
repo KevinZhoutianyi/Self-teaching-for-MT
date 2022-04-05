@@ -32,22 +32,22 @@ parser = argparse.ArgumentParser("main")
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 2000, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
+parser.add_argument('--batch_size', type=int,                   default=24,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
 parser.add_argument('--train_v_synthetic_num_points', type=int, default=4,      help='train_v_synthetic_num_points for each batch')
-parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=0,      help='train_A_num_points decay for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=8,      help='train_v_num_points for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='gpu device id')
-parser.add_argument('--exp_name', type=str,                     default='acc64 500k smooth0',      help='gpu device id')
+parser.add_argument('--exp_name', type=str,                     default='smooth',      help='gpu device id')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='howmany step report once')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
-parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
+parser.add_argument('--grad_acc_count', type=float,             default=32,      help='gradient accumulate steps')
 
 parser.add_argument('--w_lr', type=float,                       default=6e-4,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=6e-4,   help='learning rate for v')
@@ -113,7 +113,7 @@ torch.save(pretrained,modelname+'.pt')
 import random
 tokenizer = T5Tokenizer.from_pretrained(modelname)
 
-criterion = torch.nn.CrossEntropyLoss( reduction='none')#,ignore_index = tokenizer.pad_token_id)#
+criterion = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=0.1)#,ignore_index = tokenizer.pad_token_id)#
 # dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
 valid = dataset['validation']['translation'][:args.valid_num_points]
@@ -148,15 +148,15 @@ target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
 logging.info('train data get')
 train_dataloader = DataLoader(train_data, sampler=SequentialSampler(train_data), 
-                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=4)
 logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
-                        batch_size=16, pin_memory=True, num_workers=2)
+                        batch_size=16, pin_memory=True, num_workers=4)
 logging.info('valid data loader get')
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
-                        batch_size=16, pin_memory=True, num_workers=2)#, sampler=RandomSampler(test_data)
+                        batch_size=16, pin_memory=True, num_workers=4)#, sampler=RandomSampler(test_data)
 logging.info('test data loader get')
 
 # %%
