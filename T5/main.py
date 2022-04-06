@@ -116,7 +116,7 @@ torch.save(pretrained,modelname+'.pt')
 import random
 tokenizer = T5Tokenizer.from_pretrained(modelname)
 
-criterion = torch.nn.CrossEntropyLoss( reduction='none')#,ignore_index = tokenizer.pad_token_id)#
+criterion = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=0.1)#,ignore_index = tokenizer.pad_token_id)#
 # dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
 valid = dataset['validation']['translation'][:args.valid_num_points]
