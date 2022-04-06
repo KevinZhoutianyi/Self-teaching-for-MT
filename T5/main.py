@@ -255,10 +255,10 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     loader_len = len(_dataloader)
     split_size=[wsize,synsize,vsize,Asize]
     for step, batch in enumerate(_dataloader) :
-        train_x = Variable(batch[0], requires_grad=False).to(device)#, non_blocking=True)
-        train_x_attn = Variable(batch[1], requires_grad=False).to(device)#, non_blocking=True)
-        train_y = Variable(batch[2], requires_grad=False).to(device)#, non_blocking=True)
-        train_y_attn = Variable(batch[3], requires_grad=False).to(device)#, non_blocking=True) 
+        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
+        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
+        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
+        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=True) 
         (input_w,input_syn,input_v,input_A_v) = torch.split(train_x,split_size)
         (input_w_attn,input_syn_attn,input_v_attn,input_A_v_attn) = torch.split(train_x_attn,split_size)
         (output_w,_,output_v,output_A_v) = torch.split(train_y,split_size)
@@ -302,7 +302,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             for p in v_model.parameters():
                     p.requires_grad = False
         
-
+        torch.cuda.empty_cache()
         progress = 100*(step)/(loader_len-1)
         fre = (loader_len//args.rep_num)
         if((step)%fre == 0 or (step)==(loader_len-1)):
