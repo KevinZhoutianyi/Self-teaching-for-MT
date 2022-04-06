@@ -42,7 +42,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=8,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='64smooth',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='64',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='howmany step report once')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
@@ -50,8 +50,8 @@ parser.add_argument('--pre_epochs', type=int,                   default=0,      
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=6e-4,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=6e-4,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=1e-3,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -62,7 +62,7 @@ parser.add_argument('--smoothing', type=float,                   default=0.1,   
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.9,    help='human translated data ratio')
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.1,    help='augmented dataset ratio')
 
-parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
+parser.add_argument('--valid_begin', type=int,                  default=0,      help='whether valid before train')
 parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
 
 
@@ -108,6 +108,7 @@ torch.cuda.manual_seed(seed_)
 # %%
 modelname = args.model_name
 pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
+logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
 torch.save(pretrained,modelname+'.pt')
 
 # %%
@@ -171,17 +172,15 @@ A = A.cuda()
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_w_in_main')
 model_w = model_w.cuda()
-w_optimizer = optim.Adafactor(model_w.parameters(),lr=args.w_lr,scale_parameter=False, relative_step=False)#torch.optim.AdaFactor (model_w.parameters(),args.w_lr,scale_parameter=False, relative_step=False)#,momentum=args.momentum,weight_decay=args.decay)
-scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=1, gamma=0.9)
-# scheduler_w  = torch.optim.lr_scheduler.CosineAnnealingLR(w_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
+w_optimizer = Adafactor(model_w.parameters(), scale_parameter=True, relative_step=True, warmup_init=False,clip_threshold=1,beta1=0)
+scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=10, gamma=0.9)
 
 
 
 model_v = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
 model_v = model_v.cuda()
-v_optimizer =Adafactor(model_v.parameters(), scale_parameter=False, relative_step=False, warmup_init=False, lr = args.w_lr)#torch.optim.AdaFactor(model_v.parameters(),args.v_lr,scale_parameter=False, relative_step=False)#,momentum=args.momentum,weight_decay=args.decay)
-scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=1, gamma=0.9)#AdafactorSchedule(v_optimizer)#torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=1, gamma=0.9)
-# scheduler_v  = torch.optim.lr_scheduler.CosineAnnealingLR(v_optimizer, float(args.epochs), eta_min=args.learning_rate_min)
+v_optimizer =Adafactor(model_v.parameters(), scale_parameter=True, relative_step=True, warmup_init=False, clip_threshold=1,beta1=0)
+scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=10, gamma=0.9)
 
 
 
@@ -252,35 +251,19 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     vtrainsize = vsize+synsize
     vtrainsize_total = train_v_num_points_len+train_v_synthetic_num_points_len
     Asize = args.train_A_num_points 
-    # for step, batch in enumerate(tqdm(_dataloader, desc ="train for epoch"+str(epoch))) :
     grad_acc_count = args.grad_acc_count
     loader_len = len(_dataloader)
-    loss_w, loss_aug, loss, v_loss  = None, None, None, None
+    split_size=[wsize,synsize,vsize,Asize]
     for step, batch in enumerate(_dataloader) :
         train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
         train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
         train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
         train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=True) 
-
-        input_w = train_x[:wsize]
-        
-        input_w_attn = train_x_attn[:wsize]
-        output_w = train_y[:wsize]
-        output_w_attn = train_y_attn[:wsize]
-        attn_idx = attn_idx_list[args.train_w_num_points*step:(args.train_w_num_points*step+args.train_w_num_points)]
-           
-        input_syn = train_x[wsize:wsize+synsize]
-        input_syn_attn = train_x_attn[wsize:wsize+synsize]
-
-        input_v = train_x[wsize+synsize:wsize+synsize+vsize]
-        input_v_attn = train_x_attn[wsize+synsize:wsize+synsize+vsize]
-        output_v = train_y[wsize+synsize:wsize+synsize+vsize]
-        output_v_attn = train_y_attn[wsize+synsize:wsize+synsize+vsize]
-
-        input_A_v      = train_x[wsize+synsize+vsize:wsize+synsize+vsize+Asize]
-        input_A_v_attn = train_x_attn[wsize+synsize+vsize:wsize+synsize+vsize+Asize]
-        output_A_v      = train_y[wsize+synsize+vsize:wsize+synsize+vsize+Asize]
-        output_A_v_attn = train_y_attn[wsize+synsize+vsize:wsize+synsize+vsize+Asize]
+        (input_w,input_syn,input_v,input_A_v) = torch.split(train_x,split_size)
+        (input_w_attn,input_syn_attn,input_v_attn,input_A_v_attn) = torch.split(train_x_attn,split_size)
+        (output_w,_,output_v,output_A_v) = torch.split(train_y,split_size)
+        (output_w_attn,_,output_v_attn,output_A_v_attn) = torch.split(train_y_attn,split_size)
+        attn_idx = attn_idx_list[wsize*step:(wsize*step+wsize)]
        
 
         if (epoch <= args.epochs) and (args.train_A == 1) and epoch >= args.pre_epochs:
@@ -295,9 +278,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             w_trainloss_acc+=loss_w.item()
             loss_w.backward()
             objs_w.update(loss_w.item(), wsize)
-            # if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len):
             if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
-                nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
+                # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
                 w_optimizer.step()
                 w_optimizer.zero_grad()
             for p in w_model.parameters():
@@ -314,14 +296,12 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             v_loss.backward()
             objs_v.update(v_loss.item(), vtrainsize)
             if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
-                nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+                # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
                 v_optimizer.step()  
                 v_optimizer.zero_grad() 
             for p in v_model.parameters():
                     p.requires_grad = False
         
-
-
 
         progress = 100*(step)/(loader_len-1)
         fre = loader_len//args.rep_num
@@ -362,6 +342,16 @@ torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
 
+
+# %%
+
+
+# %%
+a = torch.ones((32,4)).to('cuda')
+(c,d,e,f) = torch.split(a,[16,8,4,4])
+
+# %%
+c.device
 
 # %%
 
