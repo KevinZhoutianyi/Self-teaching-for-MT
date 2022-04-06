@@ -31,7 +31,7 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 200, help='train data number')
+parser.add_argument('--train_num_points', type=int,             default = 1000, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
@@ -42,7 +42,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=8,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='nosmooth64',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='64',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='howmany step report once')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
@@ -116,7 +116,7 @@ torch.save(pretrained,modelname+'.pt')
 import random
 tokenizer = T5Tokenizer.from_pretrained(modelname)
 
-criterion = torch.nn.CrossEntropyLoss( reduction='none')#,ignore_index = tokenizer.pad_token_id)#
+criterion = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=0.1)#,ignore_index = tokenizer.pad_token_id)#
 # dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
 valid = dataset['validation']['translation'][:args.valid_num_points]
@@ -255,6 +255,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     loader_len = len(_dataloader)
     split_size=[wsize,synsize,vsize,Asize]
     for step, batch in enumerate(_dataloader) :
+        print(torch.cuda.memory_summary())
         train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
         train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
         train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
