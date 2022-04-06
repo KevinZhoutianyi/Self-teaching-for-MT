@@ -33,11 +33,11 @@ parser = argparse.ArgumentParser("main")
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 1000, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
+parser.add_argument('--batch_size', type=int,                   default=20,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
-parser.add_argument('--train_v_synthetic_num_points', type=int, default=8,      help='train_v_synthetic_num_points for each batch')
-parser.add_argument('--train_v_num_points', type=int,           default=8,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=8,      help='train_A_num_points decay for each batch')
+parser.add_argument('--train_v_synthetic_num_points', type=int, default=4,      help='train_v_synthetic_num_points for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
@@ -48,7 +48,7 @@ parser.add_argument('--rep_num', type=int,                      default='25',   
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
-parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
+parser.add_argument('--grad_acc_count', type=float,             default=128,      help='gradient accumulate steps')
 
 parser.add_argument('--w_lr', type=float,                       default=1e-3,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
@@ -56,7 +56,7 @@ parser.add_argument('--A_lr', type=float,                       default=1e-4,   
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
-parser.add_argument('--smoothing', type=float,                   default=0,    help='labelsmoothing')
+parser.add_argument('--smoothing', type=float,                   default=0.1,    help='labelsmoothing')
 
 
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.9,    help='human translated data ratio')
@@ -116,7 +116,7 @@ torch.save(pretrained,modelname+'.pt')
 import random
 tokenizer = T5Tokenizer.from_pretrained(modelname)
 
-criterion = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=0.1)#,ignore_index = tokenizer.pad_token_id)#
+criterion = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=args.smoothing)#,ignore_index = tokenizer.pad_token_id)#
 # dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
 valid = dataset['validation']['translation'][:args.valid_num_points]
@@ -256,10 +256,10 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     split_size=[wsize,synsize,vsize,Asize]
     for step, batch in enumerate(_dataloader) :
         print('1',torch.cuda.memory_allocated())
-        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
-        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
-        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
-        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=False) 
+        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
+        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
+        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
+        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=True) 
         (input_w,input_syn,input_v,input_A_v) = torch.split(train_x,split_size)
         (input_w_attn,input_syn_attn,input_v_attn,input_A_v_attn) = torch.split(train_x_attn,split_size)
         (output_w,_,output_v,output_A_v) = torch.split(train_y,split_size)
@@ -277,7 +277,11 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         if  epoch <= args.epochs:
             for p in w_model.parameters():
                 p.requires_grad = True
+                
+            print('31',torch.cuda.memory_allocated())
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
+            
+            print('32',torch.cuda.memory_allocated())
             w_trainloss_acc+=loss_w.item()
             loss_w.backward()
             objs_w.update(loss_w.item(), wsize)
@@ -350,6 +354,9 @@ for epoch in range(args.epochs):
 torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
+
+
+# %%
 
 
 
