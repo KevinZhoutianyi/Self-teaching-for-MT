@@ -63,7 +63,7 @@ def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
     w_output_ids = one_hot.scatter_(-1, output_ids.unsqueeze(-1), 1.).float().detach() + w_soft_idx.sum() - w_soft_idx.sum().detach()
     
     loss_syn = v_model.loss( input_syn_ids ,input_syn_attn   , target_ids = w_output_ids, target_attn = att)
-    del  w_soft_idx, one_hot
+    del  w_soft_idx, one_hot, bart_idx
         
     gc.collect()  
     
