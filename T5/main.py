@@ -42,7 +42,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=8,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='64',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='64smooth',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='howmany step report once')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
