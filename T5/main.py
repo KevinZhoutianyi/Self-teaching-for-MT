@@ -255,7 +255,6 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     loader_len = len(_dataloader)
     split_size=[wsize,synsize,vsize,Asize]
     for step, batch in enumerate(_dataloader) :
-        print(torch.cuda.memory_summary())
         train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
         train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
         train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
