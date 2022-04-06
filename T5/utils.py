@@ -9,6 +9,8 @@ from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 from MT_hyperparams import *
 
+def count_parameters_in_MB(model):
+    return np.sum(np.prod(v.size()) for name, v in model.named_parameters() if "auxiliary" not in name)/1e6
 def tokenize(text_data, tokenizer, max_length, padding = True):
     
     encoding = tokenizer(text_data, return_tensors='pt', padding=padding, truncation = True, max_length = max_length)
