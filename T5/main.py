@@ -56,7 +56,7 @@ parser.add_argument('--A_lr', type=float,                       default=1e-4,   
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
-parser.add_argument('--smoothing', type=float,                   default=0.1,    help='labelsmoothing')
+parser.add_argument('--smoothing', type=float,                   default=0,    help='labelsmoothing')
 
 
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.9,    help='human translated data ratio')
@@ -256,10 +256,10 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     split_size=[wsize,synsize,vsize,Asize]
     for step, batch in enumerate(_dataloader) :
         print('1',torch.cuda.memory_allocated())
-        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
-        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
-        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
-        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=True) 
+        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
+        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
+        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
+        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=False) 
         (input_w,input_syn,input_v,input_A_v) = torch.split(train_x,split_size)
         (input_w_attn,input_syn_attn,input_v_attn,input_A_v_attn) = torch.split(train_x_attn,split_size)
         (output_w,_,output_v,output_A_v) = torch.split(train_y,split_size)
@@ -293,9 +293,12 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             
             for p in v_model.parameters():
                 p.requires_grad = True
-            # loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
+            print('41',torch.cuda.memory_allocated())
+            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
+            print('42',torch.cuda.memory_allocated())
             loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
-            v_loss =  (args.traindata_loss_ratio*loss)/num_batch
+            print('43',torch.cuda.memory_allocated())
+            v_loss =  (args.traindata_loss_ratio*loss+loss_aug*args.syndata_loss_ratio)/num_batch
             v_trainloss_acc+=v_loss.item()
             v_loss.backward()
             objs_v.update(v_loss.item(), vtrainsize)
@@ -347,9 +350,6 @@ for epoch in range(args.epochs):
 torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
-
-
-# %%
 
 
 

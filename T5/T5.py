@@ -80,17 +80,7 @@ class T5(nn.Module):
         return loss
 
 
- # input is category index , output is onehot
-        # output = self.generate(input_ids)
-        # logits = (self(input_ids, input_attn, target_ids = output, target_attn = torch.ones_like(output))).logits
-      
-        # logits = logits[ :,:,:32100]
-        
-        # print("logits",logits.shape,"tar",target_ids.shape)
-        # loss = self._criterion(logits.view(-1, logits.size(-1)), target_ids.view(-1, target_ids.size(-1)))
-        # # print("logits",logits.view(-1, logits.size(-1)).shape,"tar",target_ids.view(-1).shape)
-        # # print("T5 loss", loss.shape)
-        # return loss
+
     def get_loss_vec(self, input_ids, input_attn, target_ids = None, target_attn = None):
         '''
         only count the loss when attn is 1(ie:mask the model output logits)
@@ -98,8 +88,6 @@ class T5(nn.Module):
         1. we need loss vector, so we cant use self().loss
         2. we will use logits with criterion to get loss, so we cannot use CE(ignoreindex==padindex)
         '''
-        # print(input_ids)
-        # print(target_ids)
         batch_size = target_ids.shape[0]
         target_ids_ = copy.deepcopy(target_ids)
         target_ids_[target_ids == self.tokenizer.pad_token_id] = -100
