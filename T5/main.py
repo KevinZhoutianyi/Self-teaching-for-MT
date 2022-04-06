@@ -31,7 +31,7 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 2000, help='train data number')
+parser.add_argument('--train_num_points', type=int,             default = 200, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
@@ -197,10 +197,10 @@ def my_test(_dataloader,model,epoch):
 
     # for step, batch in enumerate(tqdm(_dataloader,desc ="test for epoch"+str(epoch))):
     for step, batch in enumerate(_dataloader):
-        test_dataloaderx = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
-        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
-        test_dataloadery = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
-        test_dataloadery_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=True)
+        test_dataloaderx = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
+        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
+        test_dataloadery = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
+        test_dataloadery_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=False)
         with torch.no_grad():
             ls = my_loss(test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,model)
             acc+= ls
@@ -304,7 +304,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         
 
         progress = 100*(step)/(loader_len-1)
-        fre = loader_len//args.rep_num
+        fre = (loader_len//args.rep_num)+0.01
         if((step)%fre == 0 or (step)==(loader_len-1)):
             logging.info(f"{progress:5.3}% \t w_loss_avg:{objs_w.avg*train_w_num_points_len:^.7f}\t v_loss_avg:{objs_v.avg*vtrainsize_total:^.7f}")
   
@@ -341,19 +341,6 @@ for epoch in range(args.epochs):
 torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
-
-
-# %%
-
-
-# %%
-a = torch.ones((32,4)).to('cuda')
-(c,d,e,f) = torch.split(a,[16,8,4,4])
-
-# %%
-c.device
-
-# %%
 
 
 
