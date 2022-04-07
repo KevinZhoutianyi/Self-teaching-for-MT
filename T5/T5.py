@@ -100,18 +100,13 @@ class T5(nn.Module):
 
 
     # used for generation of summaries from articles
-    def generate(self, input_ids, num_beams = 2, max_length=max_length):
+    def generate(self, input_ids, num_beams = 4, max_length=max_length):
         
-        # beam search
-        # print("start of : generate")
+        output_ids = self.model.generate( input_ids = input_ids, num_beams = num_beams, early_stopping = True, max_length = max_length, length_penalty =0.6, repetition_penalty = 0.8)
         
-        # output_ids = self.model.generate( input_ids = input_ids, num_beams = num_beams, early_stopping = True, max_length = max_length, no_repeat_ngram_size = 2, min_length=0,repetition_penalty = 0.8)
-        
-        
-        ## sampling with top_k
-        output_ids = self.model.generate( input_ids = input_ids, num_beams = 1, max_length = max_length, top_p = 0.5, top_k = 5, no_repeat_ngram_size = 2, repetition_penalty = 1.2)
+        ## sampling with top_p
+        # output_ids = self.model.generate( input_ids = input_ids, num_beams = 1, max_length = max_length, top_p = 0.95, top_k = 50, no_repeat_ngram_size = 2, repetition_penalty = 1.2)
 
-        # print("end of : generate")
         return output_ids
 
     # new model for the definitions of gradients in architec.py 
