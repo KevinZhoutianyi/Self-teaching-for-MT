@@ -304,11 +304,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             for p in v_model.parameters():
                     p.requires_grad = False
         
-        print('5',torch.cuda.memory_allocated())
         progress = 100*(step)/(loader_len-1)
         fre = (loader_len//args.rep_num)
-        print('step',step)
-        print('fre',fre)
         if((step)%fre == 0 or (step)==(loader_len-1)):
             logging.info(f"{progress:5.3}% \t w_loss_avg:{objs_w.avg*train_w_num_points_len:^.7f}\t v_loss_avg:{objs_v.avg*vtrainsize_total:^.7f}")
   
