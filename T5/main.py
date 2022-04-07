@@ -62,7 +62,7 @@ parser.add_argument('--smoothing', type=float,                   default=0.0,   
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.9,    help='human translated data ratio')
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.1,    help='augmented dataset ratio')
 
-parser.add_argument('--valid_begin', type=int,                  default=0,      help='whether valid before train')
+parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
 parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
 
 
@@ -172,14 +172,14 @@ A = A.cuda()
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_w_in_main')
 model_w = model_w.cuda()
-w_optimizer = Adafactor(model_w.parameters(), scale_parameter=True, relative_step=True, warmup_init=False,clip_threshold=1,beta1=0)
+w_optimizer = Adafactor(model_w.parameters(), scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0)
 scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=10, gamma=0.9)
 
 
 
 model_v = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
 model_v = model_v.cuda()
-v_optimizer =Adafactor(model_v.parameters(), scale_parameter=True, relative_step=True, warmup_init=False, clip_threshold=1,beta1=0)
+v_optimizer =Adafactor(model_v.parameters(), scale_parameter=False, relative_step=False, warmup_init=False, clip_threshold=1,beta1=0)
 scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=10, gamma=0.9)
 
 
