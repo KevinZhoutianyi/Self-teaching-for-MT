@@ -42,7 +42,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='smooth64',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='withlr',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='howmany step report once')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
@@ -172,14 +172,14 @@ A = A.cuda()
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_w_in_main')
 model_w = model_w.cuda()
-w_optimizer = Adafactor(model_w.parameters(), scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0)
+w_optimizer = Adafactor(model_w.parameters(), lr = args.w_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0)
 scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=10, gamma=0.9)
 
 
 
 model_v = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
 model_v = model_v.cuda()
-v_optimizer =Adafactor(model_v.parameters(), scale_parameter=False, relative_step=False, warmup_init=False, clip_threshold=1,beta1=0)
+v_optimizer =Adafactor(model_v.parameters(), lr = args.v_lr ,scale_parameter=False, relative_step=False, warmup_init=False, clip_threshold=1,beta1=0)
 scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=10, gamma=0.9)
 
 
