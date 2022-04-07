@@ -42,7 +42,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='withlrsmooth',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='withlr',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='howmany step report once')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
@@ -50,8 +50,8 @@ parser.add_argument('--pre_epochs', type=int,                   default=0,      
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=128,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=1e-3,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=4e-4,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=4e-4,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -62,7 +62,7 @@ parser.add_argument('--smoothing', type=float,                   default=0.1,   
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.9,    help='human translated data ratio')
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.1,    help='augmented dataset ratio')
 
-parser.add_argument('--valid_begin', type=int,                  default=0,      help='whether valid before train')
+parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
 parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
 
 
@@ -74,7 +74,7 @@ import wandb
 os.environ['WANDB_API_KEY']='a166474b1b7ad33a0549adaaec19a2f6d3f91d87'
 os.environ['WANDB_NAME']=args.exp_name
 # os.environ['WANDB_NOTES']='train without A,withoutAandt5smallandbatch64 '
-wandb.init(project="BeforeA",config=args)
+wandb.init(project="500K",config=args)
 
 
 # %%
