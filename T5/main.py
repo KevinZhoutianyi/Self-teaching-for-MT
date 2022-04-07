@@ -42,7 +42,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='withlr',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='withlrsmooth',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='howmany step report once')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
@@ -56,13 +56,13 @@ parser.add_argument('--A_lr', type=float,                       default=1e-4,   
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
-parser.add_argument('--smoothing', type=float,                   default=0.0,    help='labelsmoothing')
+parser.add_argument('--smoothing', type=float,                   default=0.1,    help='labelsmoothing')
 
 
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.9,    help='human translated data ratio')
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.1,    help='augmented dataset ratio')
 
-parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
+parser.add_argument('--valid_begin', type=int,                  default=0,      help='whether valid before train')
 parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
 
 
@@ -116,7 +116,8 @@ torch.save(pretrained,modelname+'.pt')
 import random
 tokenizer = T5Tokenizer.from_pretrained(modelname)
 
-criterion = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=args.smoothing)#,ignore_index = tokenizer.pad_token_id)#
+criterion = torch.nn.CrossEntropyLoss( reduction='none')#teacher shouldn't have label smoothing, especially when student got same size.
+criterion_v = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=args.smoothing) #without LS, V may be too confident to that syn data, and LS do well for real data also.
 # dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
 valid = dataset['validation']['translation'][:args.valid_num_points]
@@ -127,6 +128,7 @@ def preprocess(dat):
 preprocess(train)
 preprocess(valid)
 preprocess(test)
+#TODO: Syn_input should be monolingual data, should try en-fo's en. cuz wmt may align
 num_batch = args.train_num_points//args.batch_size
 train = train[:args.batch_size*num_batch]
 logging.info("train len: %d",len(train))
@@ -177,7 +179,7 @@ scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=10, gamma=0
 
 
 
-model_v = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
+model_v = T5(criterion=criterion_v, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
 model_v = model_v.cuda()
 v_optimizer =Adafactor(model_v.parameters(), lr = args.v_lr ,scale_parameter=False, relative_step=False, warmup_init=False, clip_threshold=1,beta1=0)
 scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=10, gamma=0.9)
