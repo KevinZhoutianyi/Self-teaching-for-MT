@@ -174,14 +174,14 @@ A = A.cuda()
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_w_in_main')
 model_w = model_w.cuda()
-w_optimizer = Adafactor(model_w.parameters(), lr = args.w_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0)
+w_optimizer = Adafactor(model_w.parameters(),scale_parameter=False, relative_step=True , warmup_init=False,clip_threshold=1,beta1=0)
 scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=10, gamma=0.9)
 
 
 
 model_v = T5(criterion=criterion_v, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
 model_v = model_v.cuda()
-v_optimizer =Adafactor(model_v.parameters(), lr = args.v_lr ,scale_parameter=False, relative_step=False, warmup_init=False, clip_threshold=1,beta1=0)
+v_optimizer =Adafactor(model_v.parameters(),scale_parameter=False, relative_step=True, warmup_init=False, clip_threshold=1,beta1=0)
 scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=10, gamma=0.9)
 
 
