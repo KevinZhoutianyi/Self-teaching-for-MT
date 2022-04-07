@@ -54,7 +54,7 @@ def my_loss2(input_ids, input_attn, target_ids, target_attn, model):
 # define calc_loss_aug
 
 def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
-    output_ids = input_syn_ids
+    output_ids = w_model.generate(input_syn_ids)
     att = (output_ids>0.5).long()
     w_logits = w_model(input_syn_ids, input_syn_attn, target_ids = output_ids, target_attn = torch.ones_like(output_ids).long()).logits
     w_soft_idx, _ = torch.max(w_logits, dim=-1, keepdims= True)
