@@ -100,7 +100,7 @@ class T5(nn.Module):
 
 
     # used for generation of summaries from articles
-    def generate(self, input_ids, num_beams = 4, max_length=max_length):
+    def generate(self, input_ids, num_beams = 2, max_length=max_length):
         
         # beam search
         # print("start of : generate")

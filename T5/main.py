@@ -56,7 +56,7 @@ parser.add_argument('--A_lr', type=float,                       default=1e-4,   
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
-parser.add_argument('--smoothing', type=float,                   default=0.1,    help='labelsmoothing')
+parser.add_argument('--smoothing', type=float,                   default=0.0,    help='labelsmoothing')
 
 
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.9,    help='human translated data ratio')
@@ -74,7 +74,7 @@ import wandb
 os.environ['WANDB_API_KEY']='a166474b1b7ad33a0549adaaec19a2f6d3f91d87'
 os.environ['WANDB_NAME']=args.exp_name
 # os.environ['WANDB_NOTES']='train without A,withoutAandt5smallandbatch64 '
-wandb.init(project="CUDAOOM",config=args)
+wandb.init(project="BeforeA",config=args)
 
 
 # %%
@@ -255,7 +255,6 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     loader_len = len(_dataloader)
     split_size=[wsize,synsize,vsize,Asize]
     for step, batch in enumerate(_dataloader) :
-        print('1',torch.cuda.memory_allocated())
         train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
         train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
         train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
@@ -267,21 +266,17 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         attn_idx = attn_idx_list[wsize*step:(wsize*step+wsize)]
        
 
-        print('2',torch.cuda.memory_allocated())
         if (epoch <= args.epochs) and (args.train_A == 1) and epoch >= args.pre_epochs:
             architect.step(input_w,  output_w,input_w_attn, output_w_attn, w_optimizer, input_syn, input_syn_attn,input_A_v, input_A_v_attn, output_A_v, 
                 output_A_v_attn, v_optimizer, attn_idx, lr_w, lr_v)
         
         
-        print('3',torch.cuda.memory_allocated())
         if  epoch <= args.epochs:
             for p in w_model.parameters():
                 p.requires_grad = True
                 
-            print('31',torch.cuda.memory_allocated())
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
             
-            print('32',torch.cuda.memory_allocated())
             w_trainloss_acc+=loss_w.item()
             loss_w.backward()
             objs_w.update(loss_w.item(), wsize)
@@ -292,16 +287,12 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             for p in w_model.parameters():
                     p.requires_grad = False
 
-        print('4',torch.cuda.memory_allocated())
         if epoch >= args.pre_epochs and epoch <= args.epochs:
             
             for p in v_model.parameters():
                 p.requires_grad = True
-            print('41',torch.cuda.memory_allocated())
-            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)#,input_v,input_v_attn,output_v,output_v_attn)
-            print('42',torch.cuda.memory_allocated())
+            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
             loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
-            print('43',torch.cuda.memory_allocated())
             v_loss =  (args.traindata_loss_ratio*loss+loss_aug*args.syndata_loss_ratio)/num_batch
             v_trainloss_acc+=v_loss.item()
             v_loss.backward()
