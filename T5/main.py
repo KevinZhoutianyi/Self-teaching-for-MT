@@ -44,7 +44,7 @@ parser.add_argument('--gpu', type=int,                          default=0,      
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
 parser.add_argument('--exp_name', type=str,                     default='withlr large',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='report times for 1 epoch')
-parser.add_argument('--test_num', type=int,                      default='4',      help='test times for 1 epoch')
+parser.add_argument('--test_num', type=int,                      default='2',      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
@@ -312,7 +312,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         rep_fre = (loader_len//args.rep_num)
         test_fre = (loader_len//args.test_num)
 
-        if((step)%rep_fre == 0 and step!=0):
+        if((step)%test_fre == 0 and step!=0):
             my_test(valid_dataloader,model_v,epoch)
             my_test(valid_dataloader,model_w,epoch)
 
