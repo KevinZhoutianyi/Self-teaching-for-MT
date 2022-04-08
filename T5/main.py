@@ -42,17 +42,17 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='withlr large',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='noV',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                      default='2',      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
-parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
+parser.add_argument('--grad_acc_count', type=float,             default=16,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=3e-4,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=3e-4,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=6e-4,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=6e-4,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -275,8 +275,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         
         
         if  epoch <= args.epochs:
-            for p in w_model.parameters():
-                p.requires_grad = True
+            # for p in w_model.parameters():
+            #     p.requires_grad = True
                 
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
             
@@ -287,25 +287,25 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
                 # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
                 w_optimizer.step()
                 w_optimizer.zero_grad()
-            for p in w_model.parameters():
-                    p.requires_grad = False
+            # for p in w_model.parameters():
+            #         p.requires_grad = False
 
-        if epoch >= args.pre_epochs and epoch <= args.epochs:
+        # if epoch >= args.pre_epochs and epoch <= args.epochs:
             
-            for p in v_model.parameters():
-                p.requires_grad = True
-            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
-            loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
-            v_loss =  (args.traindata_loss_ratio*loss+loss_aug*args.syndata_loss_ratio)/num_batch
-            v_trainloss_acc+=v_loss.item()
-            v_loss.backward()
-            objs_v.update(v_loss.item(), vtrainsize)
-            if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
-                # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-                v_optimizer.step()  
-                v_optimizer.zero_grad() 
-            for p in v_model.parameters():
-                    p.requires_grad = False
+        #     for p in v_model.parameters():
+        #         p.requires_grad = True
+        #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
+        #     loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
+        #     v_loss =  (args.traindata_loss_ratio*loss+loss_aug*args.syndata_loss_ratio)/num_batch
+        #     v_trainloss_acc+=v_loss.item()
+        #     v_loss.backward()
+        #     objs_v.update(v_loss.item(), vtrainsize)
+        #     if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
+        #         # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+        #         v_optimizer.step()  
+        #         v_optimizer.zero_grad() 
+        #     for p in v_model.parameters():
+        #             p.requires_grad = False
         
 
         progress = 100*(step)/(loader_len-1)
