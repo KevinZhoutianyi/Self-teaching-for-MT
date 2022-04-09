@@ -1,9 +1,11 @@
-# Self-teaching-for-MT
 
-# ref
-back translation
-skill learn
+[basic idea](https://github.com/KevinZhoutianyi/Self-teaching-for-machine-translation/blob/main/ref/MT_self_teaching.pdf)
 
+[math process](https://github.com/KevinZhoutianyi/Self-teaching-for-machine-translation/blob/main/ref/mt_math_withlambda.pdf)
 
-after training model w can be used for generating efficient data for training
-ie. w generate s->t, another model z train on s->t, with smaller training data size, it get a better result.
+## Code instruction:
+W model -> teacher model
+
+V model -> student model
+
+start file: ./T5/main.ipynb
