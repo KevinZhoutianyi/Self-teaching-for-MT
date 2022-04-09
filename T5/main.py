@@ -42,7 +42,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='1mdata',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='withlr large',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                      default='5',      help='test times for 1 epoch')
 
@@ -71,14 +71,15 @@ parser.add_argument('--train_A', type=int,                      default=0 ,     
 args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
 
 # %%
+#https://wandb.ai/ check the running status online
 import wandb
 os.environ['WANDB_API_KEY']='a166474b1b7ad33a0549adaaec19a2f6d3f91d87'
 os.environ['WANDB_NAME']=args.exp_name
-# os.environ['WANDB_NOTES']='train without A,withoutAandt5smallandbatch64 '
 wandb.init(project="500K",config=args)
 
 
 # %%
+#logging file
 now = time.strftime("%Y-%m-%d-%H_%M_%S",time.localtime(time.time())) 
 
 log_format = '%(asctime)s |\t  %(message)s'
@@ -92,8 +93,6 @@ dataset = load_dataset('wmt14','de-en')
 logging.info(args)
 logging.info(dataset)
 logging.info(dataset['train'][5])
-
-
 
 writer = SummaryWriter('tensorboard')
 
@@ -113,7 +112,7 @@ logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
 torch.save(pretrained,modelname+'.pt')
 
 # %%
-# Load the tokenizer.
+# preprocess the data, make a dataloader
 import random
 tokenizer = T5Tokenizer.from_pretrained(modelname)
 
@@ -125,7 +124,7 @@ valid = dataset['validation']['translation'][:args.valid_num_points]
 test = dataset['test']['translation']#[L_t+L_v:L_t+L_v+L_test]
 def preprocess(dat):
     for t in dat:
-        t['en'] = "translate English to German: " + t['en'] 
+        t['en'] = "translate English to German: " + t['en']  #needed for T5
 preprocess(train)
 preprocess(valid)
 preprocess(test)
@@ -133,6 +132,16 @@ preprocess(test)
 num_batch = args.train_num_points//args.batch_size
 train = train[:args.batch_size*num_batch]
 logging.info("train len: %d",len(train))
+
+'''
+each mini batch consist of : 
+1. data to train W
+2. monolingual data to generate parallel data
+3. data to train V
+4. data to train A
+'''
+
+
 train_w_num_points_len = num_batch * args.train_w_num_points
 train_v_synthetic_num_points_len = num_batch * args.train_v_synthetic_num_points
 train_v_num_points_len = num_batch * args.train_v_num_points
@@ -153,7 +162,7 @@ logging.info(test[2])
 target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
 logging.info('train data get')
-train_dataloader = DataLoader(train_data, sampler=SequentialSampler(train_data), 
+train_dataloader = DataLoader(train_data, sampler= RandomSampler(train_data), 
                         batch_size=args.batch_size, pin_memory=True, num_workers=4)
 logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
@@ -223,6 +232,8 @@ def my_test(_dataloader,model,epoch):
                 logging.info(f'label_decoded[:2]:{label_decoded[:2]}')
             metric_sacrebleu.add_batch(predictions=pred_str, references=label_str)
             metric_bleu.add_batch(predictions=pred_list, references=label_list)
+            if(step==150):
+                break
             
     logging.info('computing score...')            
     sacrebleu_score = metric_sacrebleu.compute()
@@ -275,8 +286,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         
         
         if  epoch <= args.epochs:
-            # for p in w_model.parameters():
-            #     p.requires_grad = True
+            for p in w_model.parameters():
+                p.requires_grad = True
                 
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
             
@@ -287,25 +298,25 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
                 # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
                 w_optimizer.step()
                 w_optimizer.zero_grad()
-            # for p in w_model.parameters():
-            #         p.requires_grad = False
+            for p in w_model.parameters():
+                    p.requires_grad = False
 
-        # if epoch >= args.pre_epochs and epoch <= args.epochs:
+        if epoch >= args.pre_epochs and epoch <= args.epochs:
             
-        #     for p in v_model.parameters():
-        #         p.requires_grad = True
-        #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
-        #     loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
-        #     v_loss =  (args.traindata_loss_ratio*loss+loss_aug*args.syndata_loss_ratio)/num_batch
-        #     v_trainloss_acc+=v_loss.item()
-        #     v_loss.backward()
-        #     objs_v.update(v_loss.item(), vtrainsize)
-        #     if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
-        #         # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-        #         v_optimizer.step()  
-        #         v_optimizer.zero_grad() 
-        #     for p in v_model.parameters():
-        #             p.requires_grad = False
+            for p in v_model.parameters():
+                p.requires_grad = True
+            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
+            loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
+            v_loss =  (args.traindata_loss_ratio*loss+loss_aug*args.syndata_loss_ratio)/num_batch
+            v_trainloss_acc+=v_loss.item()
+            v_loss.backward()
+            objs_v.update(v_loss.item(), vtrainsize)
+            if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
+                # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+                v_optimizer.step()  
+                v_optimizer.zero_grad() 
+            for p in v_model.parameters():
+                    p.requires_grad = False
         
 
         progress = 100*(step)/(loader_len-1)
@@ -313,9 +324,9 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         test_fre = (loader_len//args.test_num)
 
         if((step)%test_fre == 0 and step!=0):
-            my_test(valid_dataloader,model_v,epoch)
-            my_test(valid_dataloader,model_w,epoch)
-
+            my_test(train_dataloader,model_w,epoch)
+            my_test(train_dataloader,model_v,epoch)
+        
 
 
         if((step)%rep_fre == 0 or (step)==(loader_len-1)):
@@ -328,7 +339,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
 
 # %%
 if(args.valid_begin==1):
-    my_test(valid_dataloader,model_w,-1) #before train
+    my_test(train_dataloader,model_w,-1) #before train
     # my_test(valid_dataloader,model_v,-1)  
 for epoch in range(args.epochs):
     lr_w = scheduler_w.get_lr()[0]
