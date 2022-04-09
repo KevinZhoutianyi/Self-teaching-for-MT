@@ -42,14 +42,14 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='noV',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='1mdata',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default='25',      help='report times for 1 epoch')
-parser.add_argument('--test_num', type=int,                      default='2',      help='test times for 1 epoch')
+parser.add_argument('--test_num', type=int,                      default='5',      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
-parser.add_argument('--grad_acc_count', type=float,             default=16,      help='gradient accumulate steps')
+parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
 
 parser.add_argument('--w_lr', type=float,                       default=6e-4,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=6e-4,   help='learning rate for v')
