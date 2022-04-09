@@ -51,8 +51,8 @@ parser.add_argument('--pre_epochs', type=int,                   default=0,      
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=6e-4,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=6e-4,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=1e-4,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=1e-4,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
