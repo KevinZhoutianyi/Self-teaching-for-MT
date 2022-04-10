@@ -209,6 +209,8 @@ def my_test(_dataloader,model,epoch):
 
     # for step, batch in enumerate(tqdm(_dataloader,desc ="test for epoch"+str(epoch))):
     for step, batch in enumerate(_dataloader):
+        if(step==150):
+            break
         test_dataloaderx = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
         test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
         test_dataloadery = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
@@ -226,14 +228,13 @@ def my_test(_dataloader,model,epoch):
             label_str = [[x.replace('.', '')] for x in label_decoded]
             pred_list = [x.replace('.', '').split()  for x in pred_decoded]
             label_list = [[x.replace('.', '').split()] for x in label_decoded]
+            metric_sacrebleu.add_batch(predictions=pred_str, references=label_str)
+            metric_bleu.add_batch(predictions=pred_list, references=label_list)
             if  step%100==0:
                 logging.info(f'x_decoded[:2]:{x_decoded[:2]}')
                 logging.info(f'pred_decoded[:2]:{pred_decoded[:2]}')
                 logging.info(f'label_decoded[:2]:{label_decoded[:2]}')
-            metric_sacrebleu.add_batch(predictions=pred_str, references=label_str)
-            metric_bleu.add_batch(predictions=pred_list, references=label_list)
-            if(step==150):
-                break
+            
             
     logging.info('computing score...')            
     sacrebleu_score = metric_sacrebleu.compute()
