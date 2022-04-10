@@ -88,7 +88,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO,
 fh = logging.FileHandler(os.path.join("./log/", now+'.txt'),'w',encoding = "UTF-8")
 fh.setFormatter(logging.Formatter(log_format))
 logging.getLogger().addHandler(fh)
-dataset = load_dataset('wmt14','de-en')
+dataset = load_dataset('wmt16','de-en')
 
 logging.info(args)
 logging.info(dataset)
@@ -228,7 +228,6 @@ def my_test(_dataloader,model,epoch):
             label_str = [[x.replace('.', '')] for x in label_decoded]
             pred_list = [x.replace('.', '').split()  for x in pred_decoded]
             label_list = [[x.replace('.', '').split()] for x in label_decoded]
-            logging.info(label_str)
             metric_sacrebleu.add_batch(predictions=pred_str, references=label_str)
             metric_bleu.add_batch(predictions=pred_list, references=label_list)
             if  step%100==0:
