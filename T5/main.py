@@ -199,7 +199,7 @@ scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=10, gamma=0
 architect = Architect(model_w, model_v,  A, args)
 
 # %%
-
+import time
 def my_test(_dataloader,model,epoch):
     acc = 0
     counter = 0
@@ -209,8 +209,7 @@ def my_test(_dataloader,model,epoch):
 
     # for step, batch in enumerate(tqdm(_dataloader,desc ="test for epoch"+str(epoch))):
     for step, batch in enumerate(_dataloader):
-        print(step)
-        if(step==5):
+        if(step==150):
             break
         test_dataloaderx = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
         test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
@@ -237,7 +236,8 @@ def my_test(_dataloader,model,epoch):
                 logging.info(f'label_decoded[:2]:{label_decoded[:2]}')
             
             
-    logging.info('computing score...')            
+    logging.info('computing score...') 
+    time.sleep(1)           
     sacrebleu_score = metric_sacrebleu.compute()
     bleu_score = metric_bleu.compute()
     logging.info('%s sacreBLEU : %f',model.name,sacrebleu_score['score'])#TODO:bleu may be wrong cuz max length
