@@ -209,7 +209,8 @@ def my_test(_dataloader,model,epoch):
 
     # for step, batch in enumerate(tqdm(_dataloader,desc ="test for epoch"+str(epoch))):
     for step, batch in enumerate(_dataloader):
-        if(step==150):
+        print(step)
+        if(step==5):
             break
         test_dataloaderx = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
         test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
