@@ -118,9 +118,9 @@ tokenizer = T5Tokenizer.from_pretrained(modelname)
 
 criterion = torch.nn.CrossEntropyLoss( reduction='none')#teacher shouldn't have label smoothing, especially when student got same size.
 criterion_v = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=args.smoothing) #without LS, V may be too confident to that syn data, and LS do well for real data also.
-# dataset = dataset.shuffle(seed=seed_)
+dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
-valid = dataset['train']['translation'][:args.train_num_points]#TODO:change dataset['validation']['translation'][:args.valid_num_points]
+valid = dataset['train']['translation'][args.train_num_points:args.train_num_points+3000]#TODO:change dataset['validation']['translation'][:args.valid_num_points]
 test = dataset['test']['translation']#[L_t+L_v:L_t+L_v+L_test]
 def preprocess(dat):
     for t in dat:
@@ -199,7 +199,7 @@ scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=10, gamma=0
 architect = Architect(model_w, model_v,  A, args)
 
 # %%
-import time
+
 def my_test(_dataloader,model,epoch):
     acc = 0
     counter = 0
@@ -209,8 +209,7 @@ def my_test(_dataloader,model,epoch):
 
     # for step, batch in enumerate(tqdm(_dataloader,desc ="test for epoch"+str(epoch))):
     for step, batch in enumerate(_dataloader):
-        if(step==150):
-            break
+        
         test_dataloaderx = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
         test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
         test_dataloadery = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
@@ -224,10 +223,10 @@ def my_test(_dataloader,model,epoch):
             pred_decoded = tokenizer.batch_decode(pre,skip_special_tokens=True)
             label_decoded =  tokenizer.batch_decode(test_dataloadery,skip_special_tokens=True)
             
-            pred_str = [x.replace('.', '')  for x in pred_decoded]
-            label_str = [[x.replace('.', '')] for x in label_decoded]
-            pred_list = [x.replace('.', '').split()  for x in pred_decoded]
-            label_list = [[x.replace('.', '').split()] for x in label_decoded]
+            pred_str = [x  for x in pred_decoded]
+            label_str = [[x] for x in label_decoded]
+            pred_list = [x.split()  for x in pred_decoded]
+            label_list = [[x.split()] for x in label_decoded]
             metric_sacrebleu.add_batch(predictions=pred_str, references=label_str)
             metric_bleu.add_batch(predictions=pred_list, references=label_list)
             if  step%100==0:
@@ -237,7 +236,6 @@ def my_test(_dataloader,model,epoch):
             
             
     logging.info('computing score...') 
-    time.sleep(1)           
     sacrebleu_score = metric_sacrebleu.compute()
     bleu_score = metric_bleu.compute()
     logging.info('%s sacreBLEU : %f',model.name,sacrebleu_score['score'])#TODO:bleu may be wrong cuz max length
@@ -367,6 +365,9 @@ for epoch in range(args.epochs):
 torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
+
+
+# %%
 
 
 # %%
