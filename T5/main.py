@@ -249,6 +249,7 @@ def my_test(_dataloader,model,epoch):
     
     wandb.log({'test_loss'+model.name: acc/counter})
     del test_dataloaderx,acc,counter,test_dataloaderx_attn,sacrebleu_score,bleu_score,test_dataloadery,test_dataloadery_attn,ls,pre,x_decoded,pred_decoded,label_decoded,pred_str,label_str,pred_list,label_list
+    gc.collect()
     torch.cuda.empty_cache()
     model.train()
         
@@ -365,12 +366,6 @@ for epoch in range(args.epochs):
 torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
-
-
-# %%
-
-
-# %%
 
 
 
