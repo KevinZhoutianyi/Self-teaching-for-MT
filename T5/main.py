@@ -120,7 +120,7 @@ criterion = torch.nn.CrossEntropyLoss( reduction='none')#teacher shouldn't have 
 criterion_v = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=args.smoothing) #without LS, V may be too confident to that syn data, and LS do well for real data also.
 dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
-valid = dataset['train']['translation'][args.train_num_points:args.train_num_points+3000]#TODO:change dataset['validation']['translation'][:args.valid_num_points]
+valid = dataset['train']['translation'][args.train_num_points:args.train_num_points+args.valid_num_points]#TODO:change dataset['validation']['translation'][:args.valid_num_points]
 test = dataset['test']['translation']#[L_t+L_v:L_t+L_v+L_test]
 def preprocess(dat):
     for t in dat:
@@ -163,15 +163,15 @@ target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
 logging.info('train data get')
 train_dataloader = DataLoader(train_data, sampler= SequentialSampler(train_data), 
-                        batch_size=args.batch_size, pin_memory=True, num_workers=4)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
 logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=RandomSampler(valid_data), 
-                        batch_size=16, pin_memory=True, num_workers=4)
+                        batch_size=16, pin_memory=True, num_workers=2)
 logging.info('valid data loader get')
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
-                        batch_size=16, pin_memory=True, num_workers=4)#, sampler=RandomSampler(test_data)
+                        batch_size=16, pin_memory=True, num_workers=2)#, sampler=RandomSampler(test_data)
 logging.info('test data loader get')
 
 # %%
@@ -199,8 +199,9 @@ scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=10, gamma=0
 architect = Architect(model_w, model_v,  A, args)
 
 # %%
-
+@torch.no_grad()
 def my_test(_dataloader,model,epoch):
+    
     acc = 0
     counter = 0
     model.eval()
@@ -214,25 +215,24 @@ def my_test(_dataloader,model,epoch):
         test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
         test_dataloadery = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
         test_dataloadery_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=False)
-        with torch.no_grad():
-            ls = my_loss(test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,model)
-            acc+= ls
-            counter+= 1
-            pre = model.generate(test_dataloaderx)
-            x_decoded = tokenizer.batch_decode(test_dataloaderx,skip_special_tokens=True)
-            pred_decoded = tokenizer.batch_decode(pre,skip_special_tokens=True)
-            label_decoded =  tokenizer.batch_decode(test_dataloadery,skip_special_tokens=True)
-            
-            pred_str = [x  for x in pred_decoded]
-            label_str = [[x] for x in label_decoded]
-            pred_list = [x.split()  for x in pred_decoded]
-            label_list = [[x.split()] for x in label_decoded]
-            metric_sacrebleu.add_batch(predictions=pred_str, references=label_str)
-            metric_bleu.add_batch(predictions=pred_list, references=label_list)
-            if  step%100==0:
-                logging.info(f'x_decoded[:2]:{x_decoded[:2]}')
-                logging.info(f'pred_decoded[:2]:{pred_decoded[:2]}')
-                logging.info(f'label_decoded[:2]:{label_decoded[:2]}')
+        ls = my_loss(test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,model)
+        acc+= ls.item()
+        counter+= 1
+        pre = model.generate(test_dataloaderx)
+        x_decoded = tokenizer.batch_decode(test_dataloaderx,skip_special_tokens=True)
+        pred_decoded = tokenizer.batch_decode(pre,skip_special_tokens=True)
+        label_decoded =  tokenizer.batch_decode(test_dataloadery,skip_special_tokens=True)
+        
+        pred_str = [x  for x in pred_decoded]
+        label_str = [[x] for x in label_decoded]
+        pred_list = [x.split()  for x in pred_decoded]
+        label_list = [[x.split()] for x in label_decoded]
+        metric_sacrebleu.add_batch(predictions=pred_str, references=label_str)
+        metric_bleu.add_batch(predictions=pred_list, references=label_list)
+        if  step%100==0:
+            logging.info(f'x_decoded[:2]:{x_decoded[:2]}')
+            logging.info(f'pred_decoded[:2]:{pred_decoded[:2]}')
+            logging.info(f'label_decoded[:2]:{label_decoded[:2]}')
             
             
     logging.info('computing score...') 
@@ -270,6 +270,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     loader_len = len(_dataloader)
     split_size=[wsize,synsize,vsize,Asize]
     for step, batch in enumerate(_dataloader) :
+        print(torch.cuda.memory_allocated(device=device))
         train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
         train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
         train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
@@ -279,6 +280,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         (output_w,_,output_v,output_A_v) = torch.split(train_y,split_size)
         (output_w_attn,_,output_v_attn,output_A_v_attn) = torch.split(train_y_attn,split_size)
         attn_idx = attn_idx_list[wsize*step:(wsize*step+wsize)]
+        print(torch.cuda.memory_allocated(device=device))
        
 
         if (epoch <= args.epochs) and (args.train_A == 1) and epoch >= args.pre_epochs:
@@ -330,6 +332,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         
 
 
+        print(torch.cuda.memory_allocated(device=device))
         if((step)%rep_fre == 0 or (step)==(loader_len-1)):
             logging.info(f"{progress:5.3}% \t w_loss_avg:{objs_w.avg*train_w_num_points_len:^.7f}\t v_loss_avg:{objs_v.avg*vtrainsize_total:^.7f}")
   
@@ -340,7 +343,9 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
 
 # %%
 if(args.valid_begin==1):
+    print(torch.cuda.memory_allocated(device=device))
     my_test(valid_dataloader,model_w,-1) #before train
+    print(torch.cuda.memory_allocated(device=device))
     # my_test(valid_dataloader,model_v,-1)  
 for epoch in range(args.epochs):
     lr_w = scheduler_w.get_lr()[0]
@@ -366,6 +371,9 @@ for epoch in range(args.epochs):
 torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
+
+
+# %%
 
 
 
