@@ -56,22 +56,8 @@ def get_aux_dataset(dataset, tokenizer):
     aux_sentence = [x['en'] for x in dataset]
     aux_target = [x[target_language] for x in dataset]
 
-
-    
-    # tokenize the article using the bart tokenizer
     model1_input_ids, model1_input_attention_mask = tokenize(aux_sentence, tokenizer, max_length = max_length)
-    # print("Input shape: ")
-    # print(model1_input_ids.shape, model1_input_attention_mask.shape)
-    
-    # tokenize the target using the bart tokenizer
     model1_target_ids, model1_target_attention_mask = tokenize(aux_target, tokenizer, max_length = max_length)
-    # print("Target shape: ")
-    # print(model1_target_ids.shape, model1_target_attention_mask.shape)    
-
-    ########################################################################################################
-
-
-    # turn to the tensordataset
     aux_data = TensorDataset(model1_input_ids, model1_input_attention_mask, model1_target_ids, model1_target_attention_mask)
    
     return aux_data

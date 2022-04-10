@@ -228,6 +228,7 @@ def my_test(_dataloader,model,epoch):
             label_str = [[x.replace('.', '')] for x in label_decoded]
             pred_list = [x.replace('.', '').split()  for x in pred_decoded]
             label_list = [[x.replace('.', '').split()] for x in label_decoded]
+            logging.info(label_str)
             metric_sacrebleu.add_batch(predictions=pred_str, references=label_str)
             metric_bleu.add_batch(predictions=pred_list, references=label_list)
             if  step%100==0:
