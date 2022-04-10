@@ -256,6 +256,8 @@ def my_test(_dataloader,model,epoch):
 
 # %%
 def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_optimizer, lr_w, lr_v, ):
+    # print(torch.cuda.memory_allocated(device=device))
+       
     objs_w = AvgrageMeter()
     objs_v = AvgrageMeter()
     v_trainloss_acc = 0
@@ -270,18 +272,15 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     loader_len = len(_dataloader)
     split_size=[wsize,synsize,vsize,Asize]
     for step, batch in enumerate(_dataloader) :
-        print(torch.cuda.memory_allocated(device=device))
-        print(step)
-        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
-        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
-        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
-        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=False) 
+        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
+        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
+        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
+        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=True) 
         (input_w,input_syn,input_v,input_A_v) = torch.split(train_x,split_size)
         (input_w_attn,input_syn_attn,input_v_attn,input_A_v_attn) = torch.split(train_x_attn,split_size)
         (output_w,_,output_v,output_A_v) = torch.split(train_y,split_size)
         (output_w_attn,_,output_v_attn,output_A_v_attn) = torch.split(train_y_attn,split_size)
         attn_idx = attn_idx_list[wsize*step:(wsize*step+wsize)]
-        print('2',torch.cuda.memory_allocated(device=device))
        
 
         if (epoch <= args.epochs) and (args.train_A == 1) and epoch >= args.pre_epochs:
@@ -289,7 +288,6 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
                 output_A_v_attn, v_optimizer, attn_idx, lr_w, lr_v)
         
         
-        print('3',torch.cuda.memory_allocated(device=device))
         if  epoch <= args.epochs:
             for p in w_model.parameters():
                 p.requires_grad = True
@@ -300,14 +298,12 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             loss_w.backward()
             objs_w.update(loss_w.item(), wsize)
             if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
-                print("step!zerograd")
                 # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
                 w_optimizer.step()
                 w_optimizer.zero_grad()
             for p in w_model.parameters():
-                p.requires_grad = False
+                    p.requires_grad = False
 
-        print('4',torch.cuda.memory_allocated(device=device))
         if epoch >= args.pre_epochs and epoch <= args.epochs:
             
             for p in v_model.parameters():
@@ -323,7 +319,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
                 v_optimizer.step()  
                 v_optimizer.zero_grad() 
             for p in v_model.parameters():
-                p.requires_grad = False
+                    p.requires_grad = False
         
 
         progress = 100*(step)/(loader_len-1)
@@ -336,7 +332,6 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         
 
 
-        print('5',torch.cuda.memory_allocated(device=device))
         if((step)%rep_fre == 0 or (step)==(loader_len-1)):
             logging.info(f"{progress:5.3}% \t w_loss_avg:{objs_w.avg*train_w_num_points_len:^.7f}\t v_loss_avg:{objs_v.avg*vtrainsize_total:^.7f}")
   
@@ -349,8 +344,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
 if(args.valid_begin==1):
     print(torch.cuda.memory_allocated(device=device))
     my_test(valid_dataloader,model_w,-1) #before train
-    print(torch.cuda.memory_allocated(device=device))
     # my_test(valid_dataloader,model_v,-1)  
+    print(torch.cuda.memory_allocated(device=device))
 for epoch in range(args.epochs):
     lr_w = scheduler_w.get_lr()[0]
     lr_v = scheduler_v.get_lr()[0]
