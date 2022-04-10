@@ -271,6 +271,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     split_size=[wsize,synsize,vsize,Asize]
     for step, batch in enumerate(_dataloader) :
         print(torch.cuda.memory_allocated(device=device))
+        print(step)
         train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
         train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
         train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
@@ -299,11 +300,12 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             loss_w.backward()
             objs_w.update(loss_w.item(), wsize)
             if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
+                print("step!zerograd")
                 # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
                 w_optimizer.step()
                 w_optimizer.zero_grad()
             for p in w_model.parameters():
-                    p.requires_grad = False
+                p.requires_grad = False
 
         print('4',torch.cuda.memory_allocated(device=device))
         if epoch >= args.pre_epochs and epoch <= args.epochs:
@@ -321,7 +323,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
                 v_optimizer.step()  
                 v_optimizer.zero_grad() 
             for p in v_model.parameters():
-                    p.requires_grad = False
+                p.requires_grad = False
         
 
         progress = 100*(step)/(loader_len-1)
