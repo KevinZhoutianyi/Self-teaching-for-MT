@@ -43,16 +43,16 @@ parser.add_argument('--train_A_num_points', type=int,           default=4,      
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
 parser.add_argument('--exp_name', type=str,                     default='withlr large',      help='experiment name')
-parser.add_argument('--rep_num', type=int,                      default='25',      help='report times for 1 epoch')
-parser.add_argument('--test_num', type=int,                      default='5',      help='test times for 1 epoch')
+parser.add_argument('--rep_num', type=int,                      default=25,      help='report times for 1 epoch')
+parser.add_argument('--test_num', type=int,                      default=4,      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=1e-4,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=1e-4,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=6e-4,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=6e-4,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -120,7 +120,7 @@ criterion = torch.nn.CrossEntropyLoss( reduction='none')#teacher shouldn't have 
 criterion_v = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=args.smoothing) #without LS, V may be too confident to that syn data, and LS do well for real data also.
 # dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
-valid = dataset['validation']['translation'][:args.valid_num_points]
+valid = dataset['train']['translation'][:args.train_num_points]#TODO:change dataset['validation']['translation'][:args.valid_num_points]
 test = dataset['test']['translation']#[L_t+L_v:L_t+L_v+L_test]
 def preprocess(dat):
     for t in dat:
@@ -162,11 +162,11 @@ logging.info(test[2])
 target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
 logging.info('train data get')
-train_dataloader = DataLoader(train_data, sampler= RandomSampler(train_data), 
+train_dataloader = DataLoader(train_data, sampler= SequentialSampler(train_data), 
                         batch_size=args.batch_size, pin_memory=True, num_workers=4)
 logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
-valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
+valid_dataloader = DataLoader(valid_data, sampler=RandomSampler(valid_data), 
                         batch_size=16, pin_memory=True, num_workers=4)
 logging.info('valid data loader get')
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
@@ -324,8 +324,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         test_fre = (loader_len//args.test_num)
 
         if((step)%test_fre == 0 and step!=0):
-            my_test(train_dataloader,model_w,epoch)
-            my_test(train_dataloader,model_v,epoch)
+            my_test(valid_dataloader,model_w,epoch)
+            my_test(valid_dataloader,model_v,epoch)
         
 
 
@@ -339,7 +339,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
 
 # %%
 if(args.valid_begin==1):
-    my_test(train_dataloader,model_w,-1) #before train
+    my_test(valid_dataloader,model_w,-1) #before train
     # my_test(valid_dataloader,model_v,-1)  
 for epoch in range(args.epochs):
     lr_w = scheduler_w.get_lr()[0]
