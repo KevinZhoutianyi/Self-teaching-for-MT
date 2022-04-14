@@ -120,7 +120,7 @@ criterion = torch.nn.CrossEntropyLoss( reduction='none')#teacher shouldn't have 
 criterion_v = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=args.smoothing) #without LS, V may be too confident to that syn data, and LS do well for real data also.
 dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
-valid = dataset['train']['translation'][args.train_num_points:args.train_num_points+args.valid_num_points]#TODO:change dataset['validation']['translation'][:args.valid_num_points]
+valid = dataset['validation']['translation'][:args.valid_num_points]#TODO:change dataset['validation']['translation'][:args.valid_num_points]
 test = dataset['test']['translation']#[L_t+L_v:L_t+L_v+L_test]
 def preprocess(dat):
     for t in dat:
