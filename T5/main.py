@@ -327,9 +327,9 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         rep_fre = (loader_len//args.rep_num)
         test_fre = (loader_len//args.test_num)
 
-        if((step)%test_fre == 0 and step!=0):
-            my_test(valid_dataloader,model_w,epoch)
-            my_test(valid_dataloader,model_v,epoch)
+        # if((step)%test_fre == 0 and step!=0):
+        #     my_test(valid_dataloader,model_w,epoch)
+        #     my_test(valid_dataloader,model_v,epoch)
         
 
 
