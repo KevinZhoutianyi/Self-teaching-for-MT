@@ -51,8 +51,8 @@ parser.add_argument('--pre_epochs', type=int,                   default=0,      
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=3e-4,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=3e-4,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=6e-4,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=6e-4,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -120,7 +120,7 @@ criterion = torch.nn.CrossEntropyLoss( reduction='none')#teacher shouldn't have 
 criterion_v = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=args.smoothing) #without LS, V may be too confident to that syn data, and LS do well for real data also.
 dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
-valid = dataset['validation']['translation'][:args.valid_num_points]#TODO:change dataset['validation']['translation'][:args.valid_num_points]
+valid = dataset['train']['translation'][args.train_num_points:args.train_num_points+args.valid_num_points]#TODO:change dataset['validation']['translation'][:args.valid_num_points]
 test = dataset['test']['translation']#[L_t+L_v:L_t+L_v+L_test]
 def preprocess(dat):
     for t in dat:
@@ -167,11 +167,11 @@ train_dataloader = DataLoader(train_data, sampler= SequentialSampler(train_data)
 logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=RandomSampler(valid_data), 
-                        batch_size=16, pin_memory=True, num_workers=2)
+                        batch_size=4, pin_memory=True, num_workers=2)
 logging.info('valid data loader get')
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
-                        batch_size=16, pin_memory=True, num_workers=2)#, sampler=RandomSampler(test_data)
+                        batch_size=4, pin_memory=True, num_workers=2)#, sampler=RandomSampler(test_data)
 logging.info('test data loader get')
 
 # %%
