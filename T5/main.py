@@ -68,7 +68,7 @@ parser.add_argument('--train_A', type=int,                      default=0 ,     
 
 
 
-args = parser.parse_args(args=[])#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
+args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
 
 # %%
 #https://wandb.ai/ check the running status online
