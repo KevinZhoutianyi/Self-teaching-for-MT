@@ -61,5 +61,6 @@ def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
     one_hot = torch.zeros(output_ids.shape[0], output_ids.shape[1], v_model.vocab_size, device=torch.device('cuda:0'))
     w_output_ids = one_hot.scatter_(-1, output_ids.unsqueeze(-1), 1.).float().detach() + w_soft_idx.sum() - w_soft_idx.sum().detach()
     loss_syn = v_model.loss( input_syn_ids ,input_syn_attn   , target_ids = w_output_ids, target_attn = att)
- 
+    del _
+    gc.collect()
     return loss_syn

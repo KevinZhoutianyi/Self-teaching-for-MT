@@ -68,7 +68,7 @@ parser.add_argument('--train_A', type=int,                      default=0 ,     
 
 
 
-args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
+args = parser.parse_args(args=[])#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
 
 # %%
 #https://wandb.ai/ check the running status online
@@ -272,6 +272,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     loader_len = len(_dataloader)
     split_size=[wsize,synsize,vsize,Asize]
     for step, batch in enumerate(_dataloader) :
+        torch.cuda.empty_cache()
         train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
         train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
         train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
