@@ -271,8 +271,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     grad_acc_count = args.grad_acc_count
     loader_len = len(_dataloader)
     split_size=[wsize,synsize,vsize,Asize]
+    logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader) :
-        torch.cuda.empty_cache()
         train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
         train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
         train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
@@ -300,10 +300,11 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             objs_w.update(loss_w.item(), wsize)
             if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
                 # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
+                logging.info("w step")
                 w_optimizer.step()
                 w_optimizer.zero_grad()
             for p in w_model.parameters():
-                    p.requires_grad = False
+                p.requires_grad = False
 
         if epoch >= args.pre_epochs and epoch <= args.epochs:
             
@@ -317,10 +318,11 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             objs_v.update(v_loss.item(), vtrainsize)
             if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
                 # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+                logging.info("Vstep")
                 v_optimizer.step()  
                 v_optimizer.zero_grad() 
             for p in v_model.parameters():
-                    p.requires_grad = False
+                p.requires_grad = False
         
 
         progress = 100*(step)/(loader_len-1)
