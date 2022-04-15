@@ -42,7 +42,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=2,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='withlr large',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='test',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=25,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                      default=4,      help='test times for 1 epoch')
 
@@ -75,7 +75,7 @@ args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ip
 import wandb
 os.environ['WANDB_API_KEY']='a166474b1b7ad33a0549adaaec19a2f6d3f91d87'
 os.environ['WANDB_NAME']=args.exp_name
-wandb.init(project="500K",config=args)
+wandb.init(project="smallT5",config=args)
 
 
 # %%
