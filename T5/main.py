@@ -33,11 +33,11 @@ parser = argparse.ArgumentParser("main")
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 1000, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=64,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=16,      help='train_w_num_points for each batch')
-parser.add_argument('--train_v_synthetic_num_points', type=int, default=16,      help='train_v_synthetic_num_points for each batch')
-parser.add_argument('--train_v_num_points', type=int,           default=16,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=16,      help='train_A_num_points decay for each batch')
+parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
+parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
+parser.add_argument('--train_v_synthetic_num_points', type=int, default=8,      help='train_v_synthetic_num_points for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=8,      help='train_v_num_points for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=8,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
