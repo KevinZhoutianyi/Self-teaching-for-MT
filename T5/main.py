@@ -42,7 +42,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=16,     
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='test',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='lr-5',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=25,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                      default=4,      help='test times for 1 epoch')
 
@@ -107,7 +107,7 @@ torch.cuda.manual_seed(seed_)
 
 # %%
 modelname = args.model_name
-pretrained  =  T5ForConditionalGeneration.from_pretrained('t5-base')
+pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
 logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
 torch.save(pretrained,modelname+'.pt')
 
