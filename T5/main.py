@@ -33,8 +33,8 @@ parser = argparse.ArgumentParser("main")
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 1000, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=40,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=16,      help='train_w_num_points for each batch')
+parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
+parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
 parser.add_argument('--train_v_synthetic_num_points', type=int, default=8,      help='train_v_synthetic_num_points for each batch')
 parser.add_argument('--train_v_num_points', type=int,           default=8,      help='train_v_num_points for each batch')
 parser.add_argument('--train_A_num_points', type=int,           default=8,      help='train_A_num_points decay for each batch')
@@ -42,7 +42,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=8,      
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='test6.-4',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='test',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=25,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                      default=4,      help='test times for 1 epoch')
 
@@ -51,8 +51,8 @@ parser.add_argument('--pre_epochs', type=int,                   default=0,      
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=6e-4,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=6e-4,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=6e-5,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=6e-5,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -201,7 +201,7 @@ architect = Architect(model_w, model_v,  A, args)
 # %%
 @torch.no_grad()
 def my_test(_dataloader,model,epoch):
-    logging.info(f"GPU mem before test:{getGPUMem(device)}%")
+    # logging.info(f"GPU mem before test:{getGPUMem(device)}%")
     acc = 0
     counter = 0
     model.eval()
@@ -211,10 +211,10 @@ def my_test(_dataloader,model,epoch):
     # for step, batch in enumerate(tqdm(_dataloader,desc ="test for epoch"+str(epoch))):
     for step, batch in enumerate(_dataloader):
         
-        test_dataloaderx = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
-        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
-        test_dataloadery = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
-        test_dataloadery_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=False)
+        test_dataloaderx = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
+        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
+        test_dataloadery = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
+        test_dataloadery_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=True)
         ls = my_loss(test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,model)
         acc+= ls.item()
         counter+= 1
@@ -254,7 +254,7 @@ def my_test(_dataloader,model,epoch):
     model.train()
     
     
-    logging.info(f"GPU mem after test:{getGPUMem(device)}%")
+    # logging.info(f"GPU mem after test:{getGPUMem(device)}%")
         
 
 # %%
@@ -277,10 +277,10 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader) :
         logging.info(f"GPU mem :{getGPUMem(device)}%")
-        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
-        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
-        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
-        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=False) 
+        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
+        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
+        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
+        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=True) 
         (input_w,input_syn,input_v,input_A_v) = torch.split(train_x,split_size)
         (input_w_attn,input_syn_attn,input_v_attn,input_A_v_attn) = torch.split(train_x_attn,split_size)
         (output_w,_,output_v,output_A_v) = torch.split(train_y,split_size)
@@ -335,6 +335,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         
         if((step)%rep_fre == 0 or (step)==(loader_len-1)):
             logging.info(f"{progress:5.3}% \t w_loss_avg:{objs_w.avg*train_w_num_points_len:^.7f}\t v_loss_avg:{objs_v.avg*vtrainsize_total:^.7f}")
+            wandb.log({'test_loss'+model.name: acc/counter})
   
     logging.info(str(("Attention Weights A : ", A.alpha)))
     
