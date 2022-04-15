@@ -254,7 +254,7 @@ def my_test(_dataloader,model,epoch):
     model.train()
     
     
-    logging.info(f"GPU mem after test:{getGPUMem(device)}")
+    logging.info(f"GPU mem after test:{getGPUMem(device)}%")
         
 
 # %%
@@ -276,11 +276,11 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     split_size=[wsize,synsize,vsize,Asize]
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader) :
-        logging.info(f"GPU mem :{getGPUMem(device)}")
-        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
-        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
-        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
-        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=True) 
+        logging.info(f"GPU mem :{getGPUMem(device)}%")
+        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
+        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
+        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
+        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=False) 
         (input_w,input_syn,input_v,input_A_v) = torch.split(train_x,split_size)
         (input_w_attn,input_syn_attn,input_v_attn,input_A_v_attn) = torch.split(train_x_attn,split_size)
         (output_w,_,output_v,output_A_v) = torch.split(train_y,split_size)
@@ -296,9 +296,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         if  epoch <= args.epochs:
             for p in w_model.parameters():
                 p.requires_grad = True
-                
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
-            
             w_trainloss_acc+=loss_w.item()
             loss_w.backward()
             objs_w.update(loss_w.item(), wsize)
@@ -335,8 +333,6 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             my_test(valid_dataloader,model_w,epoch)
             my_test(valid_dataloader,model_v,epoch)
         
-
-
         if((step)%rep_fre == 0 or (step)==(loader_len-1)):
             logging.info(f"{progress:5.3}% \t w_loss_avg:{objs_w.avg*train_w_num_points_len:^.7f}\t v_loss_avg:{objs_v.avg*vtrainsize_total:^.7f}")
   
