@@ -42,7 +42,7 @@ parser.add_argument('--train_A_num_points', type=int,           default=16,     
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='lr-4',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='test',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=25,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                      default=4,      help='test times for 1 epoch')
 
@@ -51,8 +51,8 @@ parser.add_argument('--pre_epochs', type=int,                   default=0,      
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=6e-4,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=6e-4,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=6e-5,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=6e-5,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -201,7 +201,7 @@ architect = Architect(model_w, model_v,  A, args)
 # %%
 @torch.no_grad()
 def my_test(_dataloader,model,epoch):
-    
+    logging.info(f"GPU mem before test:{getGPUMem(device)}%")
     acc = 0
     counter = 0
     model.eval()
@@ -252,6 +252,9 @@ def my_test(_dataloader,model,epoch):
     gc.collect()
     torch.cuda.empty_cache()
     model.train()
+    
+    
+    logging.info(f"GPU mem after test:{getGPUMem(device)}")
         
 
 # %%
@@ -273,6 +276,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     split_size=[wsize,synsize,vsize,Asize]
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader) :
+        logging.info(f"GPU mem :{getGPUMem(device)}")
         train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
         train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
         train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
@@ -300,7 +304,6 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             objs_w.update(loss_w.item(), wsize)
             if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
                 # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
-                logging.info("w step")
                 w_optimizer.step()
                 w_optimizer.zero_grad()
             for p in w_model.parameters():
@@ -318,7 +321,6 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             objs_v.update(v_loss.item(), vtrainsize)
             if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
                 # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-                logging.info("Vstep")
                 v_optimizer.step()  
                 v_optimizer.zero_grad() 
             for p in v_model.parameters():
@@ -345,10 +347,8 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
 
 # %%
 if(args.valid_begin==1):
-    print(torch.cuda.memory_allocated(device=device))
     my_test(valid_dataloader,model_w,-1) #before train
     # my_test(valid_dataloader,model_v,-1)  
-    print(torch.cuda.memory_allocated(device=device))
 for epoch in range(args.epochs):
     lr_w = scheduler_w.get_lr()[0]
     lr_v = scheduler_v.get_lr()[0]

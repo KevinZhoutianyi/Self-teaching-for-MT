@@ -132,3 +132,5 @@ def accuracy(output, target, topk=(1,)):
         res.append(correct_k.mul_(100.0/batch_size))
         
     return res
+def getGPUMem(device):
+    return torch.cuda.memory_allocated(device=device)*100/torch.cuda.max_memory_allocated(device=device)
