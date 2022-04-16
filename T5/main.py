@@ -33,11 +33,11 @@ parser = argparse.ArgumentParser("main")
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 1000, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
-parser.add_argument('--train_v_synthetic_num_points', type=int, default=8,      help='train_v_synthetic_num_points for each batch')
-parser.add_argument('--train_v_num_points', type=int,           default=8,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=8,      help='train_A_num_points decay for each batch')
+parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
+parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
+parser.add_argument('--train_v_synthetic_num_points', type=int, default=4,      help='train_v_synthetic_num_points for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
@@ -64,7 +64,7 @@ parser.add_argument('--traindata_loss_ratio', type=float,       default=0.9,    
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.1,    help='augmented dataset ratio')
 
 parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
-parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
+parser.add_argument('--train_A', type=int,                      default=1 ,     help='whether train A')
 
 
 
@@ -211,10 +211,10 @@ def my_test(_dataloader,model,epoch):
     # for step, batch in enumerate(tqdm(_dataloader,desc ="test for epoch"+str(epoch))):
     for step, batch in enumerate(_dataloader):
         
-        test_dataloaderx = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
-        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
-        test_dataloadery = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
-        test_dataloadery_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=True)
+        test_dataloaderx = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
+        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
+        test_dataloadery = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
+        test_dataloadery_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=False)
         ls = my_loss(test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,model)
         acc+= ls.item()
         counter+= 1
@@ -276,11 +276,11 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
     split_size=[wsize,synsize,vsize,Asize]
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader) :
-        logging.info(f"GPU mem :{getGPUMem(device)}%")
-        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=True)
-        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=True)
-        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=True)
-        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=True) 
+        # logging.info(f"GPU mem :{getGPUMem(device)}%")
+        train_x = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
+        train_x_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
+        train_y = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
+        train_y_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=False) 
         (input_w,input_syn,input_v,input_A_v) = torch.split(train_x,split_size)
         (input_w_attn,input_syn_attn,input_v_attn,input_A_v_attn) = torch.split(train_x_attn,split_size)
         (output_w,_,output_v,output_A_v) = torch.split(train_y,split_size)
@@ -289,9 +289,17 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
        
 
         if (epoch <= args.epochs) and (args.train_A == 1) and epoch >= args.pre_epochs:
+            
+            for p in v_model.parameters():
+                p.requires_grad = True
+            for p in w_model.parameters():
+                p.requires_grad = True
             architect.step(input_w,  output_w,input_w_attn, output_w_attn, w_optimizer, input_syn, input_syn_attn,input_A_v, input_A_v_attn, output_A_v, 
                 output_A_v_attn, v_optimizer, attn_idx, lr_w, lr_v)
-        
+            for p in v_model.parameters():
+                p.requires_grad = False
+            for p in w_model.parameters():
+                p.requires_grad = False
         
         if  epoch <= args.epochs:
             for p in w_model.parameters():
@@ -335,7 +343,11 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
         
         if((step)%rep_fre == 0 or (step)==(loader_len-1)):
             logging.info(f"{progress:5.3}% \t w_loss_avg:{objs_w.avg*train_w_num_points_len:^.7f}\t v_loss_avg:{objs_v.avg*vtrainsize_total:^.7f}")
-            wandb.log({'test_loss'+model.name: acc/counter})
+            wandb.log({'train_loss_W_recent':objs_w.avg*train_w_num_points_len})
+            wandb.log({'train_loss_V_recent':objs_v.avg*vtrainsize_total})
+            
+            objs_v.reset()
+            objs_w.reset()
   
     logging.info(str(("Attention Weights A : ", A.alpha)))
     

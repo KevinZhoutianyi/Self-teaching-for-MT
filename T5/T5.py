@@ -48,7 +48,7 @@ class T5(nn.Module):
         self.pad_token_id = tokenizer.pad_token_id
         
         self._criterion = criterion
-
+        self.args = args
         self.model = torch.load(args.model_name+'.pt')
         self.encoder = self.model.get_encoder()
         self.embedding = Embedding_(self.encoder.embed_tokens).requires_grad_()#convert token to 512dimensions vector
