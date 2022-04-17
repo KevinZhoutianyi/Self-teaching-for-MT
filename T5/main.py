@@ -49,7 +49,7 @@ parser.add_argument('--test_num', type=int,                      default=4,     
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
-parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
+parser.add_argument('--grad_acc_count', type=float,             default=1,      help='gradient accumulate steps')
 
 parser.add_argument('--w_lr', type=float,                       default=6e-5,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=6e-5,   help='learning rate for v')
