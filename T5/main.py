@@ -44,7 +44,7 @@ parser.add_argument('--gpu', type=int,                          default=0,      
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
 parser.add_argument('--exp_name', type=str,                     default='noacc',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=25,      help='report times for 1 epoch')
-parser.add_argument('--test_num', type=int,                      default=4,      help='test times for 1 epoch')
+parser.add_argument('--test_num', type=int,                     default=4,      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
@@ -57,7 +57,7 @@ parser.add_argument('--A_lr', type=float,                       default=1e-4,   
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--momentum', type=float,                   default=0.7,    help='momentum')
-parser.add_argument('--smoothing', type=float,                   default=0.1,    help='labelsmoothing')
+parser.add_argument('--smoothing', type=float,                  default=0.1,    help='labelsmoothing')
 
 
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.9,    help='human translated data ratio')
@@ -108,8 +108,9 @@ torch.cuda.manual_seed(seed_)
 # %%
 modelname = args.model_name
 pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
+pathname = modelname.replace('/','')
 logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
-torch.save(pretrained,modelname+'.pt')
+torch.save(pretrained,pathname+'.pt')
 
 # %%
 # preprocess the data, make a dataloader
@@ -163,15 +164,15 @@ target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
 logging.info('train data get')
 train_dataloader = DataLoader(train_data, sampler= SequentialSampler(train_data), 
-                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=6)
 logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
-valid_dataloader = DataLoader(valid_data, sampler=RandomSampler(valid_data), 
-                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
+valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
+                        batch_size=args.batch_size, pin_memory=True, num_workers=6)
 logging.info('valid data loader get')
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
-                        batch_size=args.batch_size, pin_memory=True, num_workers=2)#, sampler=RandomSampler(test_data)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=6)#, sampler=RandomSampler(test_data)
 logging.info('test data loader get')
 
 # %%
