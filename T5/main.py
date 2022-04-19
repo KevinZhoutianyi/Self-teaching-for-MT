@@ -41,8 +41,8 @@ parser.add_argument('--train_A_num_points', type=int,           default=8,      
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
-parser.add_argument('--model_name', type=str,                   default='t5-base',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='noacc',      help='experiment name')
+parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
+parser.add_argument('--exp_name', type=str,                     default='1e-4',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=25,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                     default=4,      help='test times for 1 epoch')
 
@@ -51,8 +51,8 @@ parser.add_argument('--pre_epochs', type=int,                   default=0,      
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=6e-5,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=6e-5,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=1e-4,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=1e-4,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -342,7 +342,7 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
             my_test(valid_dataloader,model_w,epoch)
             my_test(valid_dataloader,model_v,epoch)
         
-        if((step)%rep_fre == 0 or (step)==(loader_len-1)):
+        if((step!=0 and (step)%rep_fre == 0) or (step)==(loader_len-1)):
             logging.info(f"{progress:5.3}% \t w_loss_avg:{objs_w.avg*train_w_num_points_len:^.7f}\t v_loss_avg:{objs_v.avg*vtrainsize_total:^.7f}")
             wandb.log({'train_loss_W_recent':objs_w.avg*train_w_num_points_len})
             wandb.log({'train_loss_V_recent':objs_v.avg*vtrainsize_total})
