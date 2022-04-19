@@ -33,16 +33,16 @@ parser = argparse.ArgumentParser("main")
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 1000, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
+parser.add_argument('--batch_size', type=int,                   default=40,     help='Batch size')
+parser.add_argument('--train_w_num_points', type=int,           default=16,      help='train_w_num_points for each batch')
 parser.add_argument('--train_v_synthetic_num_points', type=int, default=8,      help='train_v_synthetic_num_points for each batch')
 parser.add_argument('--train_v_num_points', type=int,           default=8,      help='train_v_num_points for each batch')
 parser.add_argument('--train_A_num_points', type=int,           default=8,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
-parser.add_argument('--model_name', type=str,                   default='t5-base',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='noacc',      help='experiment name')
+parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
+parser.add_argument('--exp_name', type=str,                     default='noacc6numworker',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=25,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                     default=4,      help='test times for 1 epoch')
 
@@ -115,8 +115,8 @@ torch.save(pretrained,pathname+'.pt')
 # %%
 # preprocess the data, make a dataloader
 import random
-print(modelname)
 tokenizer = T5Tokenizer.from_pretrained(modelname)
+
 criterion = torch.nn.CrossEntropyLoss( reduction='none')#teacher shouldn't have label smoothing, especially when student got same size.
 criterion_v = torch.nn.CrossEntropyLoss( reduction='none',label_smoothing=args.smoothing) #without LS, V may be too confident to that syn data, and LS do well for real data also.
 dataset = dataset.shuffle(seed=seed_)
@@ -164,15 +164,15 @@ target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
 logging.info('train data get')
 train_dataloader = DataLoader(train_data, sampler= SequentialSampler(train_data), 
-                        batch_size=args.batch_size, pin_memory=True, num_workers=4)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=6)
 logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
-                        batch_size=args.batch_size, pin_memory=True, num_workers=4)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=6)
 logging.info('valid data loader get')
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
-                        batch_size=args.batch_size, pin_memory=True, num_workers=4)#, sampler=RandomSampler(test_data)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=6)#, sampler=RandomSampler(test_data)
 logging.info('test data loader get')
 
 # %%
