@@ -33,26 +33,26 @@ parser = argparse.ArgumentParser("main")
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 1000, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
-parser.add_argument('--train_v_synthetic_num_points', type=int, default=8,      help='train_v_synthetic_num_points for each batch')
-parser.add_argument('--train_v_num_points', type=int,           default=8,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=8,      help='train_A_num_points decay for each batch')
+parser.add_argument('--batch_size', type=int,                   default=12,     help='Batch size')
+parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
+parser.add_argument('--train_v_synthetic_num_points', type=int, default=2,      help='train_v_synthetic_num_points for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=2,      help='train_v_num_points for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='T5spec',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='WithA',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=25,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                     default=4,      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
-parser.add_argument('--grad_acc_count', type=float,             default=64,      help='gradient accumulate steps')
+parser.add_argument('--grad_acc_count', type=float,             default=-1,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=0.001,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=0.00,   help='learning rate for v')
+parser.add_argument('--w_lr', type=float,                       default=0.0001,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=0.0001,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-4,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -185,14 +185,14 @@ A = A.cuda()
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_w_in_main')
 model_w = model_w.cuda()
-w_optimizer = Adafactor(model_w.parameters(), lr = args.w_lr ,scale_parameter=True, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
+w_optimizer = Adafactor(model_w.parameters(), lr = args.w_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
 scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=10, gamma=0.9)
 
 
 
 model_v = T5(criterion=criterion_v, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
 model_v = model_v.cuda()
-v_optimizer =Adafactor(model_v.parameters(), lr = args.w_lr ,scale_parameter=True, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
+v_optimizer =Adafactor(model_v.parameters(), lr = args.v_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
 scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=10, gamma=0.9)
 
 
@@ -290,48 +290,33 @@ def my_train(epoch, _dataloader, w_model, v_model, architect, A, w_optimizer, v_
        
 
         if (epoch <= args.epochs) and (args.train_A == 1) and epoch >= args.pre_epochs:
-            
-            for p in v_model.parameters():
-                p.requires_grad = True
-            for p in w_model.parameters():
-                p.requires_grad = True
-            architect.step(input_w,  output_w,input_w_attn, output_w_attn, w_optimizer, input_syn, input_syn_attn,input_A_v, input_A_v_attn, output_A_v, 
-                output_A_v_attn, v_optimizer, attn_idx, lr_w, lr_v)
-            for p in v_model.parameters():
-                p.requires_grad = False
-            for p in w_model.parameters():
-                p.requires_grad = False
+            architect.step(input_w,  output_w,input_w_attn, output_w_attn, w_optimizer,
+                    input_v,input_v_attn,output_v,output_v_attn, input_syn, input_syn_attn,
+                    input_A_v, input_A_v_attn, output_A_v,output_A_v_attn, v_optimizer,
+                    attn_idx, lr_w, lr_v)
         
         if  epoch <= args.epochs:
-            for p in w_model.parameters():
-                p.requires_grad = True
+            w_optimizer.zero_grad()
             loss_w = CTG_loss(input_w, input_w_attn, output_w, output_w_attn, attn_idx, A, w_model)
             w_trainloss_acc+=loss_w.item()
             loss_w.backward()
             objs_w.update(loss_w.item(), wsize)
-            if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
+            # if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
                 # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
-                w_optimizer.step()
-                w_optimizer.zero_grad()
-            for p in w_model.parameters():
-                p.requires_grad = False
+            w_optimizer.step()
 
         if epoch >= args.pre_epochs and epoch <= args.epochs:
             
-            for p in v_model.parameters():
-                p.requires_grad = True
+            v_optimizer.zero_grad()
             loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
             loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,model_v)
             v_loss =  (args.traindata_loss_ratio*loss+loss_aug*args.syndata_loss_ratio)/num_batch
             v_trainloss_acc+=v_loss.item()
             v_loss.backward()
             objs_v.update(v_loss.item(), vtrainsize)
-            if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
+            # if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len): 
                 # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-                v_optimizer.step()  
-                v_optimizer.zero_grad() 
-            for p in v_model.parameters():
-                p.requires_grad = False
+            v_optimizer.step()   
         
 
         progress = 100*(step)/(loader_len-1)

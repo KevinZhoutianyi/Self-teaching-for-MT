@@ -35,7 +35,7 @@ class Architect(object):
 
         self.v_model = v_model
 
-
+        self.args = args
         self.A = A
 
         # change to ctg dataset importance 
@@ -92,15 +92,17 @@ class Architect(object):
     #####################################################################################################
     # Computation of 'DS' model named as unrolled model
     
-    def _compute_unrolled_v_model(self, input, input_attn,  unrolled_w_model,  eta_v, v_optimizer):
+    def _compute_unrolled_v_model(self, input_v,input_v_attn,output_v,output_v_attn, input_syn, input_syn_attn,  unrolled_w_model,  eta_v, v_optimizer):
 
         # DS loss on augmented dataset
-        loss = calc_loss_aug(input, input_attn, unrolled_w_model,self.v_model)
-
+        loss_aug = calc_loss_aug(input, input_syn, unrolled_w_model,self.v_model)
+        loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,self.v_model)
+        num_batch = self.args.train_num_points//self.args.batch_size
+        v_loss =  (self.args.traindata_loss_ratio*loss+loss_aug*self.args.syndata_loss_ratio)/num_batch
         # Unrolled model
         theta = _concat(self.v_model.parameters()).data
        
-        dtheta = _concat(torch.autograd.grad(loss, self.v_model.parameters(), retain_graph = True )).data + self.v_decay*theta
+        dtheta = _concat(torch.autograd.grad(v_loss, self.v_model.parameters(), retain_graph = True )).data + self.v_decay*theta
         
         try:
             moment = _concat(v_optimizer.state[v]['momentum_buffer'] for v in self.v_model.parameters()).mul_(self.v_momentum)
@@ -135,22 +137,18 @@ class Architect(object):
     #########################################################################################
 
     # one step update for the importance parameter A
-    def step(self, w_input, w_target, w_input_attn,  w_target_attn, w_optimizer,v_input, v_input_attn,valid_input_v, valid_input_v_attn, valid_out_v, 
-                valid_out_v_attn, v_optimizer, attn_idx,  eta_w,eta_v):
-        
+    def step(self, input_w,  output_w,input_w_attn, output_w_attn, w_optimizer,
+                    input_v,input_v_attn,output_v,output_v_attn, input_syn, input_syn_attn,
+                    input_A_v, input_A_v_attn, output_A_v,output_A_v_attn, v_optimizer,
+                    attn_idx, lr_w, lr_v):
         self.optimizer_A.zero_grad()
-        # print("Self.A",self.A)
-        # self.optimizer_B.zero_grad()
-        # # print("architec shape:",w_input.shape, w_target.shape, w_input_attn.shape, w_target_attn.shape, attn_idx.shape)
-        unrolled_w_model = self._compute_unrolled_w_model(w_input, w_target, w_input_attn, w_target_attn, attn_idx, eta_w, w_optimizer)
+        unrolled_w_model = self._compute_unrolled_w_model(input_w, output_w, input_w_attn, output_w_attn, attn_idx, lr_w, w_optimizer)
 
         unrolled_w_model.train()
 
-        # unrolled_bartrt_model.bart_model.train()
+        unrolled_v_model = self._compute_unrolled_v_model(input_v, input_v_attn, output_v,output_v_attn, input_syn, input_syn_attn, unrolled_w_model,  lr_v, v_optimizer)#input_v,input_v_attn,output_v,output_v_attn, input_syn, input_syn_attn,  unrolled_w_model,  eta_v, v_optimizer
 
-        unrolled_v_model = self._compute_unrolled_v_model(v_input, v_input_attn,  unrolled_w_model,  eta_v, v_optimizer)
-
-        unrolled_v_loss = unrolled_v_model( valid_input_v, valid_input_v_attn,  valid_out_v, valid_out_v_attn).loss
+        unrolled_v_loss = unrolled_v_model( input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn).loss
 
         unrolled_v_model.train()
 
@@ -158,7 +156,7 @@ class Architect(object):
 
         vector_s_dash = [v.grad.data for v in unrolled_v_model.parameters()]
 
-        implicit_grads_A = self._outer_A(vector_s_dash, w_input, w_target, w_input_attn,  w_target_attn, v_input, v_input_attn, attn_idx, unrolled_w_model, eta_w, eta_v) 
+        implicit_grads_A = self._outer_A(vector_s_dash, input_w, output_w, input_w_attn,  output_w_attn, input_v, input_v_attn, attn_idx, unrolled_w_model, lr_w, lr_v) 
 
         for v, g in zip(self.A.parameters(), implicit_grads_A):
             if v.grad is None:
