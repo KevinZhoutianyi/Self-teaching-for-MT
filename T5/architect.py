@@ -95,7 +95,7 @@ class Architect(object):
     def _compute_unrolled_v_model(self, input_v,input_v_attn,output_v,output_v_attn, input_syn, input_syn_attn,  unrolled_w_model,  eta_v, v_optimizer):
 
         # DS loss on augmented dataset
-        loss_aug = calc_loss_aug(input, input_syn, unrolled_w_model,self.v_model)
+        loss_aug = calc_loss_aug(input_syn, input_syn_attn, unrolled_w_model,self.v_model)
         loss = my_loss2(input_v,input_v_attn,output_v,output_v_attn,self.v_model)
         num_batch = self.args.train_num_points//self.args.batch_size
         v_loss =  (self.args.traindata_loss_ratio*loss+loss_aug*self.args.syndata_loss_ratio)/num_batch
