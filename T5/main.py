@@ -35,9 +35,9 @@ parser.add_argument('--train_num_points', type=int,             default = 1000, 
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
-parser.add_argument('--train_v_synthetic_num_points', type=int, default=4,      help='train_v_synthetic_num_points for each batch')
+parser.add_argument('--train_v_synthetic_num_points', type=int, default=2,      help='train_v_synthetic_num_points for each batch')
 parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=6,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
