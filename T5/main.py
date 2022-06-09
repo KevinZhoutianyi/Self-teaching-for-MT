@@ -1,8 +1,4 @@
 # %%
-%load_ext autoreload
-%autoreload 2
-
-# %%
 import os
 os.getcwd() 
 # os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
