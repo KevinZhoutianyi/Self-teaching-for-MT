@@ -100,20 +100,7 @@ def unpadding(message):
         return message.rstrip(last_char)
     else:
         return message
-class AvgrageMeter(object):
 
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.avg = 0
-        self.sum = 0
-        self.cnt = 0
-
-    def update(self, val, n=1):
-        self.sum += val #TODO:its just for W
-        self.cnt += n
-        self.avg = self.sum / self.cnt
 
 
 def accuracy(output, target, topk=(1,)):

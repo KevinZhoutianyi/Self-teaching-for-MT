@@ -2,7 +2,7 @@
 # import torch
 
 seed_ = 42
-max_length = 512
+max_length = 64
 target_language = 'de'
 
 

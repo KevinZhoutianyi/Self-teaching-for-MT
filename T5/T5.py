@@ -63,11 +63,19 @@ class T5(nn.Module):
 
         # print('end of forward')
         return out
+    def forward_decoderinput(self, input_ids, input_attn, decoder_input_ids = None, target_attn = None):
+        # print('start of forward')
+        # logging.info(f"[T5] input_ids shape {input_ids.shape}")
+        
+        inp_emb = self.embedding(input_ids)/self.enc_emb_scale
+        out = self.model(inputs_embeds = inp_emb, attention_mask = input_attn, decoder_input_ids = decoder_input_ids, decoder_attention_mask = target_attn, return_dict=True)
+
+        # print('end of forward')
+        return out
     
     def loss(self, input_ids, input_attn, target_ids, target_attn):
         # output is distribution , input is just category index
         #targetids are shifted
-        batch_size = target_ids.shape[0]
         out_emb = self.embedding(target_ids)/self.enc_emb_scale
         inp_emb = self.embedding(input_ids)/self.enc_emb_scale
 
@@ -89,11 +97,12 @@ class T5(nn.Module):
         2. we will use logits with criterion to get loss, so we cannot use CE(ignoreindex==padindex)
         '''
         batch_size = target_ids.shape[0]
-        target_ids_ = copy.deepcopy(target_ids)
-        target_ids_[target_ids == self.tokenizer.pad_token_id] = -100
-        temp = (self(input_ids, input_attn, target_ids = target_ids_))
+        # target_ids_ = copy.deepcopy(target_ids)
+        # target_ids_[target_ids == self.tokenizer.pad_token_id] = -100
+        temp = (self(input_ids, input_attn, target_ids = target_ids))
         logits = temp.logits
-        loss_seq = self._criterion(logits.view(-1,logits.shape[-1]), target_ids_.view(-1)).view(batch_size,-1)
+        loss_seq = self._criterion(logits.view(-1,logits.shape[-1]), target_ids.view(-1)).view(batch_size,-1)
+        loss_seq = loss_seq*target_attn
         count = torch.sum(target_attn,-1).squeeze_()
         loss_vec_ = torch.sum(loss_seq,-1)/count
         return loss_vec_
