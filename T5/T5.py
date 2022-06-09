@@ -76,6 +76,10 @@ class T5(nn.Module):
     def loss(self, input_ids, input_attn, target_ids, target_attn):
         # output is distribution , input is just category index
         #targetids are shifted
+        tshape = target_ids.shape
+        shifted_target_ids = torch.zeros((tshape[0],tshape[1]+1,tshape[2]),device=torch.device('cuda:0'))
+        shifted_target_ids[:,0,0] = 1
+        shifted_target_ids[:,1:,:] = target_ids
         out_emb = self.embedding(target_ids)/self.enc_emb_scale
         inp_emb = self.embedding(input_ids)/self.enc_emb_scale
 
