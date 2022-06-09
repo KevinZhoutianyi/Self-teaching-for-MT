@@ -378,4 +378,10 @@ torch.save(model_v,'./model/'+now+'model_v.pt')
 
 
 
+# %%
+torch.__version__
+
+# %%
+
+
 
