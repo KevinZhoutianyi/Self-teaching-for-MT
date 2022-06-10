@@ -41,7 +41,8 @@ parser.add_argument('--train_A_num_points', type=int,           default=6,      
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
-parser.add_argument('--model_name', type=str,                   default='t5-small',      help='model_name')
+parser.add_argument('--model_name_teacher', type=str,           default='t5-base',      help='model_name')
+parser.add_argument('--model_name_student', type=str,           default='t5-small',      help='model_name')
 parser.add_argument('--exp_name', type=str,                     default='T5spec',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=50,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                     default=200,      help='test times for 1 epoch')
@@ -51,7 +52,7 @@ parser.add_argument('--pre_epochs', type=int,                   default=0,      
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=-1,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=5e-4,   help='learning rate for w')
+parser.add_argument('--w_lr', type=float,                       default=0,   help='learning rate for w')
 # parser.add_argument('--unrolled_w_lr', type=float,              default=5e-4,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=5e-4,   help='learning rate for v')
 # parser.add_argument('--unrolled_v_lr', type=float,              default=5e-4,   help='learning rate for v')
@@ -111,7 +112,13 @@ torch.cuda.manual_seed(seed_)
 
 
 # %%
-modelname = args.model_name
+modelname = args.model_name_teacher
+pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
+pathname = modelname.replace('/','')
+logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
+torch.save(pretrained,pathname+'.pt')
+
+modelname = args.model_name_student
 pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
 pathname = modelname.replace('/','')
 logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
@@ -280,6 +287,10 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
         tot_iter[0] += bs
+        
+        w_model.train()
+        v_model.train()
+
         # logging.info(f"GPU mem :{getGPUMem(device)}%")
         train_x = Variable(batch[0], requires_grad=False).to(
             device, non_blocking=False)
@@ -297,12 +308,12 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             train_y_attn, split_size)
         attn_idx = attn_idx_list[wsize*step:(wsize*step+wsize)]
 
-        if (args.train_A == 1):
-            v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, output_w_attn, w_optimizer,
-                                             input_v, input_v_attn, output_v, output_v_attn, input_syn, input_syn_attn,
-                                             input_A_v, input_A_v_attn, output_A_v, output_A_v_attn, v_optimizer,
-                                             attn_idx, lr_w, lr_v)
-            objs_v_star_val.update(v_star_val_loss, Asize)
+        # if (args.train_A == 1):
+        #     v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, output_w_attn, w_optimizer,
+        #                                      input_v, input_v_attn, output_v, output_v_attn, input_syn, input_syn_attn,
+        #                                      input_A_v, input_A_v_attn, output_A_v, output_A_v_attn, v_optimizer,
+        #                                      attn_idx, lr_w, lr_v)
+        #     objs_v_star_val.update(v_star_val_loss, Asize)
 
         w_optimizer.zero_grad()
         loss_w = CTG_loss(input_w, input_w_attn, output_w,
