@@ -50,7 +50,7 @@ class T5(nn.Module):
         self._criterion = criterion
         self.args = args
         self.model = torch.load(args.model_name_teacher.replace('/','')+'.pt')
-        if(name=='model_v_in_main'):
+        if(name=='model_v_in_main' or name=='unrolled_v'):
             self.model = torch.load(args.model_name_student.replace('/','')+'.pt')
         self.encoder = self.model.get_encoder()
         self.embedding = Embedding_(self.encoder.embed_tokens).requires_grad_()#convert token to 512dimensions vector
@@ -128,11 +128,11 @@ class T5(nn.Module):
         return output_ids
 
     # new model for the definitions of gradients in architec.py 
-    def new(self):
+    def new(self,name='unknown'):
 
         # there is embedding layer and the summarization head that we will not train on 
         # we just train on the encoder and the decoder weights 
-        model_new = T5(self._criterion, self.tokenizer, args = self.args).cuda()
+        model_new = T5(self._criterion, self.tokenizer, args = self.args, name=name).cuda()
         
         # hence we deep copy all the weights and update the required ones
         # use the first order approximation for the summarization head

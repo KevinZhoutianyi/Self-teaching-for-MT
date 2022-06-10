@@ -132,7 +132,7 @@ class Architect(object):
         model_dict = self.v_model.state_dict()
 
         # create the new bart model
-        v_model_new = self.v_model.new()
+        v_model_new = self.v_model.new(name='unrolled_v')
 
         # encoder update
         params, offset = {}, 0
