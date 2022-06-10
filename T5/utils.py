@@ -128,3 +128,10 @@ def d(l):
     return tokenizer.batch_decode(l,skip_special_tokens=True)
 def en(l):
     return tokenizer.tokenize(l,tokenizer,512,True)
+
+def turnoff_dropout(m):
+    if type(m) == torch.nn.Dropout:
+        m.p = 0
+def turnon_dropout(m):
+    if type(m) == torch.nn.Dropout:
+        m.p = 0.1

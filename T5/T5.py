@@ -49,7 +49,9 @@ class T5(nn.Module):
         
         self._criterion = criterion
         self.args = args
-        self.model = torch.load(args.model_name.replace('/','')+'.pt')
+        self.model = torch.load(args.model_name_teacher.replace('/','')+'.pt')
+        if(name=='model_v_in_main'):
+            self.model = torch.load(args.model_name_student.replace('/','')+'.pt')
         self.encoder = self.model.get_encoder()
         self.embedding = Embedding_(self.encoder.embed_tokens).requires_grad_()#convert token to 512dimensions vector
         self.enc_emb_scale = 1
@@ -85,8 +87,6 @@ class T5(nn.Module):
         temp = self.model(inputs_embeds = inp_emb, attention_mask = input_attn, decoder_inputs_embeds   = out_emb, decoder_attention_mask = target_attn, return_dict=True)
         logits = temp.logits
         loss_ = temp.loss
-        torch.save(loss_,'loss_.pt')
-        torch.save(logits,'logits.pt')
         logits = logits[:,:,:32100]
         loss = self._criterion(logits.view(-1,logits.shape[-1]),target_ids.view(-1,logits.shape[-1]))
  

@@ -60,6 +60,7 @@ def my_loss2(input_ids, input_attn, target_ids, target_attn, model):
 # define calc_loss_aug
 
 def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
+    w_model.apply(turnoff_dropout)
     output_ids = w_model.generate(input_syn_ids, num_beams=1)[:,1:].contiguous()
     # print(output_ids)
     att = (output_ids > 0.5).long()
@@ -73,6 +74,7 @@ def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
             1674,  1674,     0,  1674,  1674,  1674,  1674,  1674,  1674,  1674,
             1674,  1674,  1674,  1674,     3,  1674]]
     whether this w_logits, the ouput outside att will affect the gumble?
+    no!model.loss only calculate for the loss for the target which attn = 1,
     '''
     # print(torch.max(w_logits,-1))
     softmax_w_logtis = torch.softmax(w_logits,-1)# bs,sentlen,vocabsize
@@ -83,12 +85,10 @@ def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
 
     hard_w_logits_onehot = one_hot.scatter_(-1, hard_w_logits.unsqueeze(-1), 1.).float().detach(
     ) + softmax_w_logtis - softmax_w_logtis.detach()  #bug here  w_soft_idx.sum() # TODO:otputid start with 0
-    torch.save(input_syn_ids,'inputid.pt')
-    torch.save(output_ids,'ori_targetid.pt')
-    torch.save(hard_w_logits_onehot[:,:,:32100],'targetid.pt')
-    torch.save(att,'att.pt')
+    
     loss_syn = v_model.loss(input_syn_ids, input_syn_attn,
                             target_ids=hard_w_logits_onehot[:,:,:32100], target_attn=att)  # TODO：forward_decoderinput
     
+    w_model.apply(turnon_dropout)
     #.model.loss only calculate for the loss for the target which attn = 1,
     return loss_syn
