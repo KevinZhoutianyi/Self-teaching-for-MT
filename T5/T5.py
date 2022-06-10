@@ -76,21 +76,24 @@ class T5(nn.Module):
     def loss(self, input_ids, input_attn, target_ids, target_attn):
         # output is distribution , input is just category index
         #targetids are shifted
-        tshape = target_ids.shape
-        shifted_target_ids = torch.zeros((tshape[0],tshape[1]+1,tshape[2]),device=torch.device('cuda:0'))
+        shifted_target_ids = torch.zeros_like(target_ids,device=torch.device('cuda:0')) 
         shifted_target_ids[:,0,0] = 1
-        shifted_target_ids[:,1:,:] = target_ids
-        out_emb = self.embedding(target_ids)/self.enc_emb_scale
+        shifted_target_ids[:,1:,:] = target_ids[:,:-1,:]
+        out_emb = self.embedding(shifted_target_ids)/self.enc_emb_scale
         inp_emb = self.embedding(input_ids)/self.enc_emb_scale
 
-        logits = self.model(inputs_embeds = inp_emb, attention_mask = input_attn, decoder_inputs_embeds   = out_emb, decoder_attention_mask = target_attn, return_dict=True).logits
-
+        temp = self.model(inputs_embeds = inp_emb, attention_mask = input_attn, decoder_inputs_embeds   = out_emb, decoder_attention_mask = target_attn, return_dict=True)
+        logits = temp.logits
+        loss_ = temp.loss
+        torch.save(loss_,'loss_.pt')
+        torch.save(logits,'logits.pt')
         logits = logits[:,:,:32100]
         loss = self._criterion(logits.view(-1,logits.shape[-1]),target_ids.view(-1,logits.shape[-1]))
  
         loss = loss[target_attn.view(-1) != 0]#get rid of padding loss change shape from bs*seqlen -> bs*seqlen(when attn = 1)
         
         loss = torch.mean(loss)
+        torch.save(loss,'loss.pt')
         return loss
 
 

@@ -121,3 +121,10 @@ def accuracy(output, target, topk=(1,)):
     return res
 def getGPUMem(device):
     return torch.cuda.memory_allocated(device=device)*100/torch.cuda.max_memory_allocated(device=device)
+
+from transformers import AutoTokenizer
+tokenizer = AutoTokenizer.from_pretrained('t5-small')
+def d(l):
+    return tokenizer.batch_decode(l,skip_special_tokens=True)
+def en(l):
+    return tokenizer.tokenize(l,tokenizer,512,True)
