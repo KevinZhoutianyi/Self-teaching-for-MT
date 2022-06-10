@@ -53,9 +53,9 @@ parser.add_argument('--grad_clip', type=float,                  default=1,      
 parser.add_argument('--grad_acc_count', type=float,             default=-1,      help='gradient accumulate steps')
 
 parser.add_argument('--w_lr', type=float,                       default=5e-4,   help='learning rate for w')
-# parser.add_argument('--unrolled_w_lr', type=float,              default=5e-4,   help='learning rate for w')
+parser.add_argument('--unrolled_w_lr', type=float,              default=0,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=5e-4,   help='learning rate for v')
-# parser.add_argument('--unrolled_v_lr', type=float,              default=5e-4,   help='learning rate for v')
+parser.add_argument('--unrolled_v_lr', type=float,              default=0,   help='learning rate for v')
 parser.add_argument('--A_lr', type=float,                       default=1e-3,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
@@ -309,10 +309,12 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         attn_idx = attn_idx_list[wsize*step:(wsize*step+wsize)]
 
         if (args.train_A == 1):
+            epsilon_w = args.unrolled_w_lr
+            epsilon_v = args.unrolled_v_lr
             v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, output_w_attn, w_optimizer,
                                              input_v, input_v_attn, output_v, output_v_attn, input_syn, input_syn_attn,
                                              input_A_v, input_A_v_attn, output_A_v, output_A_v_attn, v_optimizer,
-                                             attn_idx, lr_w, lr_v)
+                                             attn_idx, epsilon_w, epsilon_v)
             objs_v_star_val.update(v_star_val_loss, Asize)
 
         w_optimizer.zero_grad()
