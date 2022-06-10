@@ -344,6 +344,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
             my_test(validdataloader, model_w, epoch)
             my_test(validdataloader, model_v, epoch)
+            logging.info(str(("Attention Weights A : ", A.alpha)))
 
         if(tot_iter[0] % args.rep_num == 0 and tot_iter[0] != 0):
             logging.info(f"{progress:5.3}%:\t  W_train_loss:{objs_w.avg:^.7f}\tV_train_syn_loss:{objs_v_syn.avg:^.7f}\tV_train_loss:{objs_v_train.avg:^.7f}\t  V_star_val_loss:{objs_v_star_val.avg:^.7f}")
@@ -356,7 +357,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             objs_w.reset()
             objs_v_star_val.reset()
 
-    logging.info(str(("Attention Weights A : ", A.alpha)))
 
     return w_trainloss_acc, v_trainloss_acc
 
