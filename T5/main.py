@@ -53,10 +53,10 @@ parser.add_argument('--grad_clip', type=float,                  default=1,      
 parser.add_argument('--grad_acc_count', type=float,             default=-1,      help='gradient accumulate steps')
 
 parser.add_argument('--w_lr', type=float,                       default=5e-4,   help='learning rate for w')
-parser.add_argument('--unrolled_w_lr', type=float,              default=0,   help='learning rate for w')
+parser.add_argument('--unrolled_w_lr', type=float,              default=5e-4,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=5e-4,   help='learning rate for v')
-parser.add_argument('--unrolled_v_lr', type=float,              default=0,   help='learning rate for v')
-parser.add_argument('--A_lr', type=float,                       default=1e-3,   help='learning rate for A')
+parser.add_argument('--unrolled_v_lr', type=float,              default=5e-4,   help='learning rate for v')
+parser.add_argument('--A_lr', type=float,                       default=1e-2,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--momentum', type=float,                   default=0.9,    help='momentum')
@@ -310,7 +310,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
 
         if (args.train_A == 1):
             epsilon_w = args.unrolled_w_lr
-            epsilon_v = args.unrolled_v_lr
+            epsilon_v  = args.unrolled_v_lr
             v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, output_w_attn, w_optimizer,
                                              input_v, input_v_attn, output_v, output_v_attn, input_syn, input_syn_attn,
                                              input_A_v, input_A_v_attn, output_A_v, output_A_v_attn, v_optimizer,
@@ -373,7 +373,7 @@ for epoch in range(args.epochs):
     lr_w = scheduler_w.get_lr()[0]
     lr_v = scheduler_v.get_lr()[0]
 
-    logging.info(f"\n\n  ----------------epoch:{epoch},\t\tlr_w:{lr_w},\t\tlr_v:{lr_v}----------------")
+    logging.info(f"\n\n  ----------------epoch:{epoch},\t\tlr_w:{lr_w},\t\tlr_v:{lr_v},\t\tlr_A:{args.A_lr}----------------")
 
     w_train_loss,v_train_loss =  my_train(epoch, train_dataloader, valid_dataloader, model_w, model_v,  architect, A, w_optimizer, v_optimizer, lr_w,lr_v,tot_iter)
     
