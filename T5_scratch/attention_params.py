@@ -17,12 +17,10 @@ seed_torch(seed_)
 class attention_params(torch.nn.Module):# A and B
     def __init__(self, N):
         super(attention_params, self).__init__()
-        self.alpha = torch.nn.Parameter(torch.ones(N)/N)
-        self.softmax = torch.nn.Softmax(dim=-1)
+        self.alpha = torch.nn.Parameter(torch.ones(N))
+        self.ReLU = torch.nn.ReLU()
         
     def forward(self, idx):
-        # # print(self.alpha)
-        probs = self.softmax(self.alpha)
+        probs = self.ReLU(self.alpha[idx])
         
-        # # print(probs)
-        return probs[idx]
+        return probs
