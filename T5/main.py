@@ -30,8 +30,8 @@ import string
 parser = argparse.ArgumentParser("main")
 
 
-parser.add_argument('--valid_num_points', type=int,             default = 200, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 2000, help='train data number')
+parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
+parser.add_argument('--train_num_points', type=int,             default = 200, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
@@ -56,7 +56,7 @@ parser.add_argument('--w_lr', type=float,                       default=5e-4,   
 parser.add_argument('--unrolled_w_lr', type=float,              default=5e-4,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=5e-4,   help='learning rate for v')
 parser.add_argument('--unrolled_v_lr', type=float,              default=5e-4,   help='learning rate for v')
-parser.add_argument('--A_lr', type=float,                       default=1e-2,   help='learning rate for A')
+parser.add_argument('--A_lr', type=float,                       default=1e-3,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--momentum', type=float,                   default=0.9,    help='momentum')
@@ -125,22 +125,24 @@ logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
 torch.save(pretrained,pathname+'.pt')
 
 # %%
+
 # preprocess the data, make a dataloader
 import random
 print(modelname)
 tokenizer = T5Tokenizer.from_pretrained(modelname)
 criterion = torch.nn.CrossEntropyLoss( reduction='none')#teacher shouldn't have label smoothing, especially when student got same size.
 criterion_v = torch.nn.CrossEntropyLoss( reduction='none')#,label_smoothing=args.smoothing) #without LS, V may be too confident to that syn data, and LS do well for real data also.
-dataset = dataset.shuffle(seed=seed_)
+# dataset = dataset.shuffle(seed=seed_)
 train = dataset['train']['translation'][:args.train_num_points]
 valid = dataset['train']['translation'][:args.valid_num_points]#TODO:change dataset['validation']['translation'][:args.valid_num_points]args.train_num_points:args.train_num_points+args.valid_num_points
 test = dataset['test']['translation']#[L_t+L_v:L_t+L_v+L_test]
+
 def preprocess(dat):
     for t in dat:
         t['en'] = "translate English to German: " + t['en']  #needed for T5
 preprocess(train)
 preprocess(valid)
-preprocess(test)
+# preprocess(test)#TODO:
 #TODO: Syn_input should be monolingual data, should try en-fo's en. cuz wmt may align
 num_batch = args.train_num_points//args.batch_size
 train = train[:args.batch_size*num_batch]
@@ -153,8 +155,6 @@ each mini batch consist of :
 3. data to train V
 4. data to train A
 '''
-
-
 train_w_num_points_len = num_batch * args.train_w_num_points
 train_v_synthetic_num_points_len = num_batch * args.train_v_synthetic_num_points
 train_v_num_points_len = num_batch * args.train_v_num_points
@@ -271,6 +271,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     objs_v_syn = AvgrageMeter()
     objs_v_train = AvgrageMeter()
     objs_v_star_val = AvgrageMeter()
+    objs_v_val = AvgrageMeter()
     v_trainloss_acc = 0
     w_trainloss_acc = 0
     # now  train_x is [num of batch, datasize], so its seperate batch for the code below
@@ -288,8 +289,8 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     for step, batch in enumerate(_dataloader):
         tot_iter[0] += bs
         
-        w_model.train()
-        v_model.train()
+        w_model.eval()#!train
+        v_model.eval()
 
         # logging.info(f"GPU mem :{getGPUMem(device)}%")
         train_x = Variable(batch[0], requires_grad=False).to(
@@ -308,24 +309,31 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             train_y_attn, split_size)
         attn_idx = attn_idx_list[wsize*step:(wsize*step+wsize)]
 
+        # with torch.no_grad():
+        #     print('out_old_loss',my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model))
+
         if (args.train_A == 1):
             epsilon_w = args.unrolled_w_lr
             epsilon_v  = args.unrolled_v_lr
             v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, output_w_attn, w_optimizer,
                                              input_v, input_v_attn, output_v, output_v_attn, input_syn, input_syn_attn,
                                              input_A_v, input_A_v_attn, output_A_v, output_A_v_attn, v_optimizer,
-                                             attn_idx, epsilon_w, epsilon_v)
+                                             attn_idx, lr_w, lr_v)
             objs_v_star_val.update(v_star_val_loss, Asize)
+        
 
+
+        w_model.eval()
         w_optimizer.zero_grad()
         loss_w = CTG_loss(input_w, input_w_attn, output_w,
                           output_w_attn, attn_idx, A, w_model)
         w_trainloss_acc += loss_w.item()
         loss_w.backward()
         objs_w.update(loss_w.item(), wsize)
-        # if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len):
-        # nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
         w_optimizer.step()
+        
+
+        w_model.eval()
 
         v_optimizer.zero_grad()
         loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
@@ -337,28 +345,30 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         v_loss.backward()
         objs_v_syn.update(loss_aug.item(), synsize)
         objs_v_train.update(loss.item(), vsize)
-        # if ((step + 1) % grad_acc_count == 0) or (step + 1 == loader_len):
-        # nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
         v_optimizer.step()
 
-        progress = 100*(step)/(loader_len-1)
+        with torch.no_grad():
+            valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
+            objs_v_val.update(valloss.item(), Asize)
 
+        progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
             my_test(validdataloader, model_w, epoch)
             my_test(validdataloader, model_v, epoch)
-            logging.info(str(("Attention Weights A : ", A.alpha[:100])))
+            logging.info(str(("Attention Weights A : ", A.ReLU(A.alpha))))
 
         if(tot_iter[0] % args.rep_num == 0 and tot_iter[0] != 0):
-            logging.info(f"{progress:5.3}%:\t  W_train_loss:{objs_w.avg:^.7f}\tV_train_syn_loss:{objs_v_syn.avg:^.7f}\tV_train_loss:{objs_v_train.avg:^.7f}\t  V_star_val_loss:{objs_v_star_val.avg:^.7f}")
+            logging.info(f"{progress:5.3}%:\t  W_train_loss:{objs_w.avg:^.7f}\tV_train_syn_loss:{objs_v_syn.avg:^.7f}\tV_train_loss:{objs_v_train.avg:^.7f}\t  V_star_val_loss:{objs_v_star_val.avg:^.7f}\t  V_val_loss:{objs_v_val.avg:^.7f}")
             wandb.log({'W_train_loss': objs_w.avg})
             wandb.log({'V_train_syn_loss': objs_v_syn.avg})
             wandb.log({'V_train_loss': objs_v_train.avg})
             wandb.log({'V_star_val_loss': objs_v_star_val.avg})
+            wandb.log({'V_val_loss': objs_v_val.avg})
             objs_v_syn.reset()
             objs_v_train.reset()
             objs_w.reset()
             objs_v_star_val.reset()
-
+            objs_v_val.reset()
 
     return w_trainloss_acc, v_trainloss_acc
 
@@ -390,6 +400,27 @@ torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
 
+
+# %%
+m1 = torch.load('main_v.pt')
+m1.eval()
+m2 = torch.load('unrolled_v.pt')
+m2.eval()
+''
+for k1, k2 in zip(m1.state_dict(), m2.state_dict()):
+    v1= m1.state_dict()[k1]
+    v2= m2.state_dict()[k2]
+    print(k1,k2)
+    # print(v1,v2)
+    print((abs(v1.data-v2.data)).sum())
+
+# %%
+a = torch.ones(1)
+a.add(1)
+
+
+# %%
+a
 
 # %%
 

@@ -52,8 +52,8 @@ class T5(nn.Module):
         self.model = torch.load(args.model_name_teacher.replace('/','')+'.pt')
         if(name=='model_v_in_main' or name=='unrolled_v'):
             self.model = torch.load(args.model_name_student.replace('/','')+'.pt')
-        self.encoder = self.model.get_encoder()
-        self.embedding = Embedding_(self.encoder.embed_tokens).requires_grad_()#convert token to 512dimensions vector
+        # self.encoder = self.model.get_encoder()
+        self.embedding = Embedding_(self.model.shared).requires_grad_()#convert token to 512dimensions vector
         self.enc_emb_scale = 1
 
     def forward(self, input_ids, input_attn, target_ids = None, target_attn = None):
@@ -93,7 +93,6 @@ class T5(nn.Module):
         loss = loss[target_attn.view(-1) != 0]#get rid of padding loss change shape from bs*seqlen -> bs*seqlen(when attn = 1)
         
         loss = torch.mean(loss)
-        torch.save(loss,'loss.pt')
         return loss
 
 
@@ -140,7 +139,6 @@ class T5(nn.Module):
         model_new.model.load_state_dict(self.model.state_dict())
         
         return model_new
-
 
 if __name__ == "__main__":
     # print("T5 main")
