@@ -14,6 +14,6 @@ python main.py --valid_num_points 2000 --train_num_points 50000 \
                 --train_w_num_points 90 --train_v_synthetic_num_points 90\
                 --train_v_num_points 90 --train_A_num_points 90\
                 --valid_begin 1 --train_A 1  --model_name_student t5-small --model_name_teacher t5-small\
-                --w_lr 5e-4 --v_lr 5e-4 --A_lr 1e-3 --unrolled_w_lr 5e-4 --unrolled_v_lr 5e-4 \
+                --w_lr 5e-4 --v_lr 5e-4 --A_lr 1 --unrolled_w_lr 5e-4 --unrolled_v_lr 5e-4 \
                 --exp_name server,50k,withA
 
