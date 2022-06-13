@@ -165,3 +165,6 @@ class Scheduler(_LRScheduler):
 
 def calc_lr(step, dim_embed, warmup_steps, lr):
     return dim_embed**(-0.5) * min(step**(-0.5), step * warmup_steps**(-1.5)) *lr
+
+def save(x,name):
+    torch.save(x,'./model/'+name+'.pt')

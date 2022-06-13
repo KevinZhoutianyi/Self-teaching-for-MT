@@ -7,7 +7,7 @@ warnings.filterwarnings("ignore")
 from T5 import *
 import torch
 from datasets import load_dataset,load_metric
-from transformers import T5Tokenizer
+from transformers import T5Tokenizer,AutoModelForSeq2SeqLM, AutoTokenizer
 import torch_optimizer as optim
 from transformers.optimization import Adafactor, AdafactorSchedule
 from MT_hyperparams import seed_,max_length,target_language
@@ -25,6 +25,9 @@ import time
 import argparse
 from tqdm import tqdm
 import string
+from torch.optim.lr_scheduler import LambdaLR
+
+from torch.optim.lr_scheduler import StepLR
 
 # %%
 parser = argparse.ArgumentParser("main")
@@ -34,14 +37,14 @@ parser.add_argument('--valid_num_points', type=int,             default = 100, h
 parser.add_argument('--train_num_points', type=int,             default = 200, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
-parser.add_argument('--train_v_synthetic_num_points', type=int, default=2,      help='train_v_synthetic_num_points for each batch')
-parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=6,      help='train_A_num_points decay for each batch')
+parser.add_argument('--train_w_num_points', type=int,           default=16,      help='train_w_num_points for each batch')
+parser.add_argument('--train_v_synthetic_num_points', type=int, default=0,      help='train_v_synthetic_num_points for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=0,      help='train_v_num_points for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=0,      help='train_A_num_points decay for each batch')
 
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
-parser.add_argument('--model_name_teacher', type=str,           default='t5-small',      help='model_name')
+parser.add_argument('--model_name_teacher', type=str,           default='google/t5-small-lm-adapt',      help='model_name')
 parser.add_argument('--model_name_student', type=str,           default='t5-small',      help='model_name')
 parser.add_argument('--exp_name', type=str,                     default='T5spec',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=50,      help='report times for 1 epoch')
@@ -52,7 +55,7 @@ parser.add_argument('--pre_epochs', type=int,                   default=0,      
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=-1,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=1,   help='learning rate for w')
+parser.add_argument('--w_lr', type=float,                       default=1e-3,   help='learning rate for w')
 parser.add_argument('--unrolled_w_lr', type=float,              default=0,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=0,   help='learning rate for v')
 parser.add_argument('--unrolled_v_lr', type=float,              default=0,   help='learning rate for v')
@@ -61,7 +64,7 @@ parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--beta1', type=float,                      default=0.9,    help='momentum')
 parser.add_argument('--beta2', type=float,                      default=0.98,    help='momentum')
-parser.add_argument('--warm', type=float,                       default=1,    help='warmup step')
+parser.add_argument('--warm', type=float,                       default=10,    help='warmup step')
 # parser.add_argument('--smoothing', type=float,                  default=0.1,    help='labelsmoothing')
 
 
@@ -114,50 +117,47 @@ torch.cuda.manual_seed(seed_)
 
 
 # %%
-def randomize_model(model):
-    for module_ in model.named_modules(): 
-        # print('!',type(module_[1]))
-        if isinstance(module_[1],(torch.nn.Linear, torch.nn.Embedding)):
-            module_[1].weight.data.normal_(mean=0.0, std=0.001)
-        elif isinstance(module_[1], transformers.models.t5.modeling_t5.T5LayerNorm):
-            module_[1].weight.data.fill_(0.1)
-        if isinstance(module_[1], torch.nn.Linear) and module_[1].bias is not None:
-            module_[1].bias.data.zero_()
-    return model
+# def randomize_model(model):
+#     for module_ in model.named_modules(): 
+#         # print('!',type(module_[1]))
+#         if isinstance(module_[1],(torch.nn.Linear, torch.nn.Embedding)):
+#             module_[1].weight.data.normal_(mean=0.0, std=0.001)
+#         elif isinstance(module_[1], transformers.models.t5.modeling_t5.T5LayerNorm):
+#             module_[1].weight.data.fill_(0.1)
+#         if isinstance(module_[1], torch.nn.Linear) and module_[1].bias is not None:
+#             module_[1].bias.data.zero_()
+#     return model
 
 # %%
-from transformers import AutoTokenizer, GPT2LMHeadModel, T5ForConditionalGeneration, T5Config
-config = T5Config.from_pretrained('t5-small')
-print(config)
-model = T5ForConditionalGeneration(config)
-model = randomize_model(model)
-model_size = sum(t.numel() for t in model.parameters())
-print(f"T5 size: {model_size/1000**2:.1f}M parameters")
-modelname = 't5-small'
-torch.save(model,modelname+'.pt')
+# from transformers import AutoTokenizer, GPT2LMHeadModel, T5ForConditionalGeneration, T5Config
+# config = T5Config.from_pretrained('t5-small')
+# print(config)
+# model = T5ForConditionalGeneration(config)
+# model = randomize_model(model)
+# model_size = sum(t.numel() for t in model.parameters())
+# print(f"T5 size: {model_size/1000**2:.1f}M parameters")
+# modelname = 't5-small'
+# torch.save(model,modelname+'.pt')
 
 # %%
-print_model(model)
+modelname = args.model_name_teacher
+pretrained  =  AutoModelForSeq2SeqLM.from_pretrained(modelname)
+pathname = modelname.replace('/','')
+logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
+torch.save(pretrained,pathname+'.pt')
 
-# %%
-# modelname = args.model_name_teacher
-# pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
-# pathname = modelname.replace('/','')
-# logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
-# torch.save(pretrained,pathname+'.pt')
-
-# modelname = args.model_name_student
-# pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
-# pathname = modelname.replace('/','')
-# logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
-# torch.save(pretrained,pathname+'.pt')
+modelname = args.model_name_student
+pretrained  =  AutoModelForSeq2SeqLM.from_pretrained(modelname)
+pathname = modelname.replace('/','')
+logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
+torch.save(pretrained,pathname+'.pt')
 
 # %%
 
 # preprocess the data, make a dataloader
 import random
-print(modelname)
-tokenizer = T5Tokenizer.from_pretrained(modelname)
+modelname = args.model_name_teacher
+tokenizer = AutoTokenizer.from_pretrained(modelname)
 criterion = torch.nn.CrossEntropyLoss( reduction='none')#teacher shouldn't have label smoothing, especially when student got same size.
 criterion_v = torch.nn.CrossEntropyLoss( reduction='none')#,label_smoothing=args.smoothing) #without LS, V may be too confident to that syn data, and LS do well for real data also.
 # dataset = dataset.shuffle(seed=seed_)
@@ -204,15 +204,15 @@ target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
 logging.info('train data get')
 train_dataloader = DataLoader(train_data, sampler= SequentialSampler(train_data), 
-                        batch_size=args.batch_size, pin_memory=False, num_workers=0)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
 logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
-                        batch_size=args.batch_size, pin_memory=False, num_workers=0)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
 logging.info('valid data loader get')
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
-                        batch_size=args.batch_size, pin_memory=False, num_workers=0)#, sampler=RandomSampler(test_data)
+                        batch_size=args.batch_size, pin_memory=True, num_workers=2)#, sampler=RandomSampler(test_data)
 logging.info('test data loader get')
 
 # %%
@@ -227,7 +227,8 @@ model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'mod
 model_w = model_w.cuda()
 w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
 # w_optimizer = Adafactor(model_w.parameters(), lr = args.w_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
-scheduler_w  = Scheduler(w_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.w_lr)
+scheduler_w  =   StepLR(w_optimizer, step_size=1, gamma=0.5)
+# scheduler_w  = Scheduler(w_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.w_lr)
 
 
 
@@ -241,12 +242,6 @@ scheduler_v  = Scheduler(v_optimizer,dim_embed=512, warmup_steps=args.warm, init
 architect = Architect(model_w, model_v,  A, args)
 
 # %%
-w_optimizer.param_groups[0]
-
-# %%
-print_model(model_w)
-
-# %%
 @torch.no_grad()
 def my_test(_dataloader,model,epoch):
     # logging.info(f"GPU mem before test:{getGPUMem(device)}%")
@@ -258,10 +253,10 @@ def my_test(_dataloader,model,epoch):
     
     for step, batch in enumerate(_dataloader):
         
-        test_dataloaderx = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)
-        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)
-        test_dataloadery = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)
-        test_dataloadery_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=False)
+        test_dataloaderx = Variable(batch[0], requires_grad=False).to(device, non_blocking=False)[:args.train_w_num_points]
+        test_dataloaderx_attn = Variable(batch[1], requires_grad=False).to(device, non_blocking=False)[:args.train_w_num_points]
+        test_dataloadery = Variable(batch[2], requires_grad=False).to(device, non_blocking=False)[:args.train_w_num_points]
+        test_dataloadery_attn = Variable(batch[3], requires_grad=False).to(device, non_blocking=False)[:args.train_w_num_points]
         ls = my_loss(test_dataloaderx,test_dataloaderx_attn,test_dataloadery,test_dataloadery_attn,model)
         acc+= ls.item()
         counter+= 1
@@ -341,7 +336,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         (output_w_attn, _, output_v_attn, output_A_v_attn) = torch.split(
             train_y_attn, split_size)
         attn_idx = attn_idx_list[wsize*step:(wsize*step+wsize)]
-
         # with torch.no_grad():
         #     print('out_old_loss',my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model))
 
@@ -354,9 +348,9 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         #                                      attn_idx, lr_w, lr_v)
         #     objs_v_star_val.update(v_star_val_loss, Asize)
 
-
         w_model.train()
         w_optimizer.zero_grad()
+   
         loss_w = CTG_loss(input_w, input_w_attn, output_w,
                           output_w_attn, attn_idx, A, w_model)
         w_trainloss_acc += loss_w.item()
@@ -366,27 +360,29 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         # assert False
 
 
-        v_optimizer.zero_grad()
-        loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
-        loss = my_loss2(input_v, input_v_attn, output_v,
-                        output_v_attn, v_model)
-        v_loss = (args.traindata_loss_ratio*loss +
-                  loss_aug*args.syndata_loss_ratio)
-        v_trainloss_acc += v_loss.item()
-        v_loss.backward()
-        objs_v_syn.update(loss_aug.item(), synsize)
-        objs_v_train.update(loss.item(), vsize)
-        v_optimizer.step()
+        # v_optimizer.zero_grad()
+        # loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
+        # loss = my_loss2(input_v, input_v_attn, output_v,
+        #                 output_v_attn, v_model)
+        # v_loss = (args.traindata_loss_ratio*loss +
+        #           loss_aug*args.syndata_loss_ratio)
+        # v_trainloss_acc += v_loss.item()
+        # v_loss.backward()
+        # objs_v_syn.update(loss_aug.item(), synsize)
+        # objs_v_train.update(loss.item(), vsize)
+        # v_optimizer.step()
 
-        with torch.no_grad():
-            valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
-            objs_v_val.update(valloss.item(), Asize)
+        # with torch.no_grad():
+        #     valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
+        #     objs_v_val.update(valloss.item(), Asize)
 
         progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
-            my_test(validdataloader, model_w, epoch)
-            my_test(validdataloader, model_v, epoch)
+            my_test(_dataloader, model_w, epoch)
+            my_test(_dataloader, model_v, epoch)
             logging.info(str(("Attention Weights A : ", A.ReLU(A.alpha))))
+            torch.save(model_v,'./model/'+'model_w.pt')#+now+
+            torch.save(model_v,'./model/'+'model_v.pt')
 
         if(tot_iter[0] % args.rep_num == 0 and tot_iter[0] != 0):
             logging.info(f"{progress:5.3}%:\t  W_train_loss:{objs_w.avg:^.7f}\tV_train_syn_loss:{objs_v_syn.avg:^.7f}\tV_train_loss:{objs_v_train.avg:^.7f}\t  V_star_val_loss:{objs_v_star_val.avg:^.7f}\t  V_val_loss:{objs_v_val.avg:^.7f}")
@@ -431,9 +427,6 @@ torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
 
-
-# %%
-print_model(model_w)
 
 # %%
 torch.load('logits.pt')
