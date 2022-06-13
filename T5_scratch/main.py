@@ -47,19 +47,21 @@ parser.add_argument('--exp_name', type=str,                     default='T5spec'
 parser.add_argument('--rep_num', type=int,                      default=50,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                     default=200,      help='test times for 1 epoch')
 
-parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
+parser.add_argument('--epochs', type=int,                       default=500,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=-1,      help='gradient accumulate steps')
 
-parser.add_argument('--w_lr', type=float,                       default=5e-4,   help='learning rate for w')
-parser.add_argument('--unrolled_w_lr', type=float,              default=5e-4,   help='learning rate for w')
-parser.add_argument('--v_lr', type=float,                       default=5e-4,   help='learning rate for v')
-parser.add_argument('--unrolled_v_lr', type=float,              default=5e-4,   help='learning rate for v')
-parser.add_argument('--A_lr', type=float,                       default=1e-3,   help='learning rate for A')
+parser.add_argument('--w_lr', type=float,                       default=1,   help='learning rate for w')
+parser.add_argument('--unrolled_w_lr', type=float,              default=0,   help='learning rate for w')
+parser.add_argument('--v_lr', type=float,                       default=0,   help='learning rate for v')
+parser.add_argument('--unrolled_v_lr', type=float,              default=0,   help='learning rate for v')
+parser.add_argument('--A_lr', type=float,                       default=0,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
-parser.add_argument('--momentum', type=float,                   default=0.9,    help='momentum')
+parser.add_argument('--beta1', type=float,                      default=0.9,    help='momentum')
+parser.add_argument('--beta2', type=float,                      default=0.98,    help='momentum')
+parser.add_argument('--warm', type=float,                       default=1,    help='warmup step')
 # parser.add_argument('--smoothing', type=float,                  default=0.1,    help='labelsmoothing')
 
 
@@ -112,17 +114,43 @@ torch.cuda.manual_seed(seed_)
 
 
 # %%
-modelname = args.model_name_teacher
-pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
-pathname = modelname.replace('/','')
-logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
-torch.save(pretrained,pathname+'.pt')
+def randomize_model(model):
+    for module_ in model.named_modules(): 
+        # print('!',type(module_[1]))
+        if isinstance(module_[1],(torch.nn.Linear, torch.nn.Embedding)):
+            module_[1].weight.data.normal_(mean=0.0, std=0.001)
+        elif isinstance(module_[1], transformers.models.t5.modeling_t5.T5LayerNorm):
+            module_[1].weight.data.fill_(0.1)
+        if isinstance(module_[1], torch.nn.Linear) and module_[1].bias is not None:
+            module_[1].bias.data.zero_()
+    return model
 
-modelname = args.model_name_student
-pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
-pathname = modelname.replace('/','')
-logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
-torch.save(pretrained,pathname+'.pt')
+# %%
+from transformers import AutoTokenizer, GPT2LMHeadModel, T5ForConditionalGeneration, T5Config
+config = T5Config.from_pretrained('t5-small')
+print(config)
+model = T5ForConditionalGeneration(config)
+model = randomize_model(model)
+model_size = sum(t.numel() for t in model.parameters())
+print(f"T5 size: {model_size/1000**2:.1f}M parameters")
+modelname = 't5-small'
+torch.save(model,modelname+'.pt')
+
+# %%
+print_model(model)
+
+# %%
+# modelname = args.model_name_teacher
+# pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
+# pathname = modelname.replace('/','')
+# logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
+# torch.save(pretrained,pathname+'.pt')
+
+# modelname = args.model_name_student
+# pretrained  =  T5ForConditionalGeneration.from_pretrained(modelname)
+# pathname = modelname.replace('/','')
+# logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
+# torch.save(pretrained,pathname+'.pt')
 
 # %%
 
@@ -197,21 +225,26 @@ A = A.cuda()
 # TODO: model loaded from saved model
 model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'model_w_in_main')
 model_w = model_w.cuda()
-w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(0, args.momentum)  )
+w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
 # w_optimizer = Adafactor(model_w.parameters(), lr = args.w_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
-scheduler_w  = torch.optim.lr_scheduler.StepLR(w_optimizer,step_size=10, gamma=0.9)
+scheduler_w  = Scheduler(w_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.w_lr)
 
 
 
 model_v = T5(criterion=criterion_v, tokenizer= tokenizer, args = args, name = 'model_v_in_main')
 model_v = model_v.cuda()
-v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.v_lr ,  betas=(0, args.momentum)  )
+v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.v_lr ,  betas=(args.beta1,args.beta2) ,eps=1e-9  )
 # v_optimizer =Adafactor(model_v.parameters(), lr = args.v_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
-scheduler_v  = torch.optim.lr_scheduler.StepLR(v_optimizer,step_size=10, gamma=0.9)
-
+scheduler_v  = Scheduler(v_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.v_lr)
 
 
 architect = Architect(model_w, model_v,  A, args)
+
+# %%
+w_optimizer.param_groups[0]
+
+# %%
+print_model(model_w)
 
 # %%
 @torch.no_grad()
@@ -312,18 +345,17 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         # with torch.no_grad():
         #     print('out_old_loss',my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model))
 
-        if (args.train_A == 1):
-            epsilon_w = args.unrolled_w_lr
-            epsilon_v  = args.unrolled_v_lr
-            v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, output_w_attn, w_optimizer,
-                                             input_v, input_v_attn, output_v, output_v_attn, input_syn, input_syn_attn,
-                                             input_A_v, input_A_v_attn, output_A_v, output_A_v_attn, v_optimizer,
-                                             attn_idx, lr_w, lr_v)
-            objs_v_star_val.update(v_star_val_loss, Asize)
-        
+        # if (args.train_A == 1):
+        #     epsilon_w = args.unrolled_w_lr
+        #     epsilon_v  = args.unrolled_v_lr
+        #     v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, output_w_attn, w_optimizer,
+        #                                      input_v, input_v_attn, output_v, output_v_attn, input_syn, input_syn_attn,
+        #                                      input_A_v, input_A_v_attn, output_A_v, output_A_v_attn, v_optimizer,
+        #                                      attn_idx, lr_w, lr_v)
+        #     objs_v_star_val.update(v_star_val_loss, Asize)
 
 
-        w_model.eval()
+        w_model.train()
         w_optimizer.zero_grad()
         loss_w = CTG_loss(input_w, input_w_attn, output_w,
                           output_w_attn, attn_idx, A, w_model)
@@ -331,9 +363,8 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         loss_w.backward()
         objs_w.update(loss_w.item(), wsize)
         w_optimizer.step()
-        
+        # assert False
 
-        w_model.eval()
 
         v_optimizer.zero_grad()
         loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
@@ -376,7 +407,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
 # %%
 # if(args.valid_begin==1):
 #     my_test(valid_dataloader,model_w,-1) #before train
-    # my_test(valid_dataloader,model_v,-1)  
+#     my_test(valid_dataloader,model_v,-1)  
 
 tot_iter = [0]
 for epoch in range(args.epochs):
@@ -399,6 +430,15 @@ for epoch in range(args.epochs):
 torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
+
+
+# %%
+print_model(model_w)
+
+# %%
+torch.load('logits.pt')
+
+# %%
 
 
 # %%
