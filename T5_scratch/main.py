@@ -65,7 +65,8 @@ parser.add_argument('--decay', type=float,                      default=1e-3,   
 parser.add_argument('--beta1', type=float,                      default=0.9,    help='momentum')
 parser.add_argument('--beta2', type=float,                      default=0.98,    help='momentum')
 parser.add_argument('--warm', type=float,                       default=10,    help='warmup step')
-parser.add_argument('--num_step_lr', type=float,                default=5,    help='warmup step')
+parser.add_argument('--num_step_lr', type=float,                default=1,    help='warmup step')
+parser.add_argument('--decay_lr', type=float,                   default=0.7,    help='warmup step')
 # parser.add_argument('--smoothing', type=float,                  default=0.1,    help='labelsmoothing')
 
 
@@ -206,7 +207,7 @@ model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'mod
 model_w = model_w.cuda()
 w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
 # w_optimizer = Adafactor(model_w.parameters(), lr = args.w_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
-scheduler_w  =   StepLR(w_optimizer, step_size=args.num_step_lr, gamma=0.9)
+scheduler_w  =   StepLR(w_optimizer, step_size=args.num_step_lr, gamma=args.decay_lr)
 # scheduler_w  = Scheduler(w_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.w_lr)
 
 
@@ -215,12 +216,12 @@ model_v = T5(criterion=criterion_v, tokenizer= tokenizer, args = args, name = 'm
 model_v = model_v.cuda()
 v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.v_lr ,  betas=(args.beta1,args.beta2) ,eps=1e-9  )
 # v_optimizer =Adafactor(model_v.parameters(), lr = args.v_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
-scheduler_v  =   StepLR(v_optimizer, step_size=args.num_step_lr, gamma=0.9)
+scheduler_v  =   StepLR(v_optimizer, step_size=args.num_step_lr, gamma=args.decay_lr)
 # scheduler_v  = Scheduler(v_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.v_lr)
 
 
 architect = Architect(model_w, model_v,  A, args)
-scheduler_A  =   StepLR(architect.optimizer_A, step_size=args.num_step_lr, gamma=0.9)
+scheduler_A  =   StepLR(architect.optimizer_A, step_size=args.num_step_lr, gamma=args.decay_lr)
 
 
 # %%
