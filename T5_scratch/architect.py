@@ -117,7 +117,7 @@ class Architect(object):
         step = v_optimizer.state[v_optimizer.param_groups[0]["params"][-1]]["step"]+1
         bias_correction1 = 1 - self.beta1 ** step
         bias_correction2 = 1 - self.beta2 ** step
-        g = _concat(torch.autograd.grad(v_loss, self.w_model.parameters(), retain_graph=True)).data
+        g = _concat(torch.autograd.grad(v_loss, self.v_model.parameters(), retain_graph=True)).data
         
         m = _concat(v_optimizer.state[v]['exp_avg']
                             for v in self.v_model.parameters()).mul_(self.beta1) + (g).mul_(1-self.beta1)
