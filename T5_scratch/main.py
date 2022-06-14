@@ -35,6 +35,7 @@ parser = argparse.ArgumentParser("main")
 
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 200, help='train data number')
+parser.add_argument('--test_num_points', type=int,              default = 50, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
@@ -140,17 +141,21 @@ modelname = args.model_name_teacher
 tokenizer = AutoTokenizer.from_pretrained(modelname)
 criterion = torch.nn.CrossEntropyLoss( reduction='none')#teacher shouldn't have label smoothing, especially when student got same size.
 criterion_v = torch.nn.CrossEntropyLoss( reduction='none')#,label_smoothing=args.smoothing) #without LS, V may be too confident to that syn data, and LS do well for real data also.
-# dataset = dataset.shuffle(seed=seed_)
-train = dataset['train']['translation'][:args.train_num_points]
-valid = dataset['validation']['translation'][:args.valid_num_points]#TODO:change dataset['validation']['translation'][:args.valid_num_points]args.train_num_points:args.train_num_points+args.valid_num_points
-test = dataset['test']['translation']#[L_t+L_v:L_t+L_v+L_test]
 
+
+
+train = dataset['train'].shuffle(seed=seed_).select(range(args.train_num_points))
+valid = dataset['validation'].shuffle(seed=seed_).select(range(args.valid_num_points))
+test = dataset['test'].shuffle(seed=seed_).select(range(args.test_num_points))#[L_t+L_v:L_t+L_v+L_test]
+train = train['translation']
+valid = valid['translation']
+test = test['translation']
 def preprocess(dat):
     for t in dat:
         t['en'] = "translate English to German: " + t['en']  #needed for T5
 preprocess(train)
 preprocess(valid)
-# preprocess(test)#TODO:
+preprocess(test)
 #TODO: Syn_input should be monolingual data, should try en-fo's en. cuz wmt may align
 num_batch = args.train_num_points//args.batch_size
 train = train[:args.batch_size*num_batch]
@@ -177,7 +182,7 @@ logging.info("valid len: %d",len(valid))
 logging.info("test len: %d" ,len(test))
 logging.info(train[2])
 logging.info(valid[2])
-logging.info(test[2])
+# logging.info(test[2])
 
 # %%
 target_language  = 'de'

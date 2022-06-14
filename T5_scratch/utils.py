@@ -22,6 +22,7 @@ def tokenize(text_data, tokenizer, max_length, padding = True):
     return input_ids, attention_mask
 
 
+
 def seed_torch(seed=0):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
