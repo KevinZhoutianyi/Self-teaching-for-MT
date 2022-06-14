@@ -42,7 +42,6 @@ parser.add_argument('--train_v_synthetic_num_points', type=int, default=0,      
 parser.add_argument('--train_v_num_points', type=int,           default=0,      help='train_v_num_points for each batch')
 parser.add_argument('--train_A_num_points', type=int,           default=0,      help='train_A_num_points decay for each batch')
 
-num_workers
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--num_workers', type=int,                  default=0,      help='num_workers')
 parser.add_argument('--model_name_teacher', type=str,           default='google/t5-small-lm-adapt',      help='model_name')
