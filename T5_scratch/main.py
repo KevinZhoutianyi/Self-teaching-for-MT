@@ -220,6 +220,8 @@ scheduler_v  =   StepLR(v_optimizer, step_size=args.num_step_lr, gamma=0.9)
 
 
 architect = Architect(model_w, model_v,  A, args)
+scheduler_A  =   StepLR(architect.optimizer_A, step_size=args.num_step_lr, gamma=0.9)
+
 
 # %%
 @torch.no_grad()
@@ -318,14 +320,14 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         attn_idx = attn_idx_list[wsize*step:(wsize*step+wsize)]
 
 
-        if (args.train_A == 1):
-            epsilon_w = args.unrolled_w_lr
-            epsilon_v  = args.unrolled_v_lr
-            v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, output_w_attn, w_optimizer,
-                                             input_v, input_v_attn, output_v, output_v_attn, input_syn, input_syn_attn,
-                                             input_A_v, input_A_v_attn, output_A_v, output_A_v_attn, v_optimizer,
-                                             attn_idx, epsilon_w, epsilon_v)
-            objs_v_star_val.update(v_star_val_loss, Asize)
+        # if (args.train_A == 1):
+        #     epsilon_w = args.unrolled_w_lr
+        #     epsilon_v  = args.unrolled_v_lr
+        #     v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, output_w_attn, w_optimizer,
+        #                                      input_v, input_v_attn, output_v, output_v_attn, input_syn, input_syn_attn,
+        #                                      input_A_v, input_A_v_attn, output_A_v, output_A_v_attn, v_optimizer,
+        #                                      attn_idx, epsilon_w, epsilon_v)
+        #     objs_v_star_val.update(v_star_val_loss, Asize)
 
         w_optimizer.zero_grad()
    
@@ -338,21 +340,21 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         # assert False
 
 
-        v_optimizer.zero_grad()
-        loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
-        loss = my_loss2(input_v, input_v_attn, output_v,
-                        output_v_attn, v_model)
-        v_loss = (args.traindata_loss_ratio*loss +
-                  loss_aug*args.syndata_loss_ratio)
-        v_trainloss_acc += v_loss.item()
-        v_loss.backward()
-        objs_v_syn.update(loss_aug.item(), synsize)
-        objs_v_train.update(loss.item(), vsize)
-        v_optimizer.step()
+        # v_optimizer.zero_grad()
+        # loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
+        # loss = my_loss2(input_v, input_v_attn, output_v,
+        #                 output_v_attn, v_model)
+        # v_loss = (args.traindata_loss_ratio*loss +
+        #           loss_aug*args.syndata_loss_ratio)
+        # v_trainloss_acc += v_loss.item()
+        # v_loss.backward()
+        # objs_v_syn.update(loss_aug.item(), synsize)
+        # objs_v_train.update(loss.item(), vsize)
+        # v_optimizer.step()
 
-        with torch.no_grad():
-            valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
-            objs_v_val.update(valloss.item(), Asize)
+        # with torch.no_grad():
+        #     valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
+        #     objs_v_val.update(valloss.item(), Asize)
 
         progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
@@ -387,6 +389,7 @@ tot_iter = [0]
 for epoch in range(args.epochs):
     lr_w = scheduler_w.get_lr()[0]
     lr_v = scheduler_v.get_lr()[0]
+    lr_A = scheduler_A.get_lr()[0]
 
     logging.info(f"\n\n  ----------------epoch:{epoch},\t\tlr_w:{lr_w},\t\tlr_v:{lr_v},\t\tlr_A:{args.A_lr}----------------")
 
@@ -394,6 +397,7 @@ for epoch in range(args.epochs):
     
     scheduler_w.step()
     scheduler_v.step()
+    scheduler_A.step()
 
 
     logging.info(f"w_train_loss:{w_train_loss},v_train_loss:{v_train_loss}")
