@@ -322,13 +322,13 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
 
         # logging.info(f"GPU mem :{getGPUMem(device)}%")
         train_x = Variable(batch[0], requires_grad=False).to(
-            device, non_blocking=False)
+            device, non_blocking=True)
         train_x_attn = Variable(batch[1], requires_grad=False).to(
-            device, non_blocking=False)
+            device, non_blocking=True)
         train_y = Variable(batch[2], requires_grad=False).to(
-            device, non_blocking=False)
+            device, non_blocking=True)
         train_y_attn = Variable(batch[3], requires_grad=False).to(
-            device, non_blocking=False)
+            device, non_blocking=True)
         (input_w, input_syn, input_v, input_A_v) = torch.split(train_x, split_size)
         (input_w_attn, input_syn_attn, input_v_attn,
          input_A_v_attn) = torch.split(train_x_attn, split_size)
