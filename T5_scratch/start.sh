@@ -15,6 +15,6 @@ python main.py --valid_num_points 3000 --train_num_points 3000000 \
                 --train_w_num_points 400 --train_v_synthetic_num_points 0\
                 --train_v_num_points 0 --train_A_num_points 0\
                 --valid_begin 1 --train_A 1  --model_name_teacher google/t5-small-lm-adapt --model_name_student t5-small\
-                --w_lr 1e-3 --v_lr 0 --A_lr 01 --unrolled_w_lr 0 --unrolled_v_lr 0 \
+                --w_lr 1e-3 --v_lr 0 --A_lr 0 --unrolled_w_lr 0 --unrolled_v_lr 0 \
                 --exp_name server,3kk,lm
 
