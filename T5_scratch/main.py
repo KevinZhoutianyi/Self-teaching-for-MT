@@ -85,6 +85,8 @@ args.rep_num = args.rep_num//args.batch_size * args.batch_size
 import wandb
 os.environ['WANDB_API_KEY']='a166474b1b7ad33a0549adaaec19a2f6d3f91d87'
 os.environ['WANDB_NAME']=args.exp_name
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 wandb.init(project="Selftraining",config=args)
 
 
@@ -313,12 +315,11 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     split_size = [wsize, synsize, vsize, Asize]
     bs = args.batch_size
 
+    w_model.train()
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
         tot_iter[0] += bs
         
-        w_model.eval()#!train
-        v_model.eval()
 
         # logging.info(f"GPU mem :{getGPUMem(device)}%")
         train_x = Variable(batch[0], requires_grad=False).to(
@@ -348,7 +349,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         #                                      attn_idx, lr_w, lr_v)
         #     objs_v_star_val.update(v_star_val_loss, Asize)
 
-        w_model.train()
         w_optimizer.zero_grad()
    
         loss_w = CTG_loss(input_w, input_w_attn, output_w,
