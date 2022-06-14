@@ -36,19 +36,20 @@ parser = argparse.ArgumentParser("main")
 parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
 parser.add_argument('--train_num_points', type=int,             default = 200, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=16,      help='train_w_num_points for each batch')
+parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
+parser.add_argument('--train_w_num_points', type=int,           default=32,      help='train_w_num_points for each batch')
 parser.add_argument('--train_v_synthetic_num_points', type=int, default=0,      help='train_v_synthetic_num_points for each batch')
 parser.add_argument('--train_v_num_points', type=int,           default=0,      help='train_v_num_points for each batch')
 parser.add_argument('--train_A_num_points', type=int,           default=0,      help='train_A_num_points decay for each batch')
 
-
+num_workers
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
+parser.add_argument('--num_workers', type=int,                  default=0,      help='num_workers')
 parser.add_argument('--model_name_teacher', type=str,           default='google/t5-small-lm-adapt',      help='model_name')
-parser.add_argument('--model_name_student', type=str,           default='t5-small',      help='model_name')
+parser.add_argument('--model_name_student', type=str,           default='google/t5-small-lm-adapt',      help='model_name')
 parser.add_argument('--exp_name', type=str,                     default='T5spec',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=50,      help='report times for 1 epoch')
-parser.add_argument('--test_num', type=int,                     default=200,      help='test times for 1 epoch')
+parser.add_argument('--test_num', type=int,                     default=2000,      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=500,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
@@ -65,6 +66,7 @@ parser.add_argument('--decay', type=float,                      default=1e-3,   
 parser.add_argument('--beta1', type=float,                      default=0.9,    help='momentum')
 parser.add_argument('--beta2', type=float,                      default=0.98,    help='momentum')
 parser.add_argument('--warm', type=float,                       default=10,    help='warmup step')
+parser.add_argument('--num_step_lr', type=float,                default=5,    help='warmup step')
 # parser.add_argument('--smoothing', type=float,                  default=0.1,    help='labelsmoothing')
 
 
@@ -85,7 +87,6 @@ args.rep_num = args.rep_num//args.batch_size * args.batch_size
 import wandb
 os.environ['WANDB_API_KEY']='a166474b1b7ad33a0549adaaec19a2f6d3f91d87'
 os.environ['WANDB_NAME']=args.exp_name
-
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 wandb.init(project="Selftraining",config=args)
 
@@ -117,29 +118,6 @@ torch.manual_seed(seed_)
 cudnn.enabled = True
 torch.cuda.manual_seed(seed_)
 
-
-# %%
-# def randomize_model(model):
-#     for module_ in model.named_modules(): 
-#         # print('!',type(module_[1]))
-#         if isinstance(module_[1],(torch.nn.Linear, torch.nn.Embedding)):
-#             module_[1].weight.data.normal_(mean=0.0, std=0.001)
-#         elif isinstance(module_[1], transformers.models.t5.modeling_t5.T5LayerNorm):
-#             module_[1].weight.data.fill_(0.1)
-#         if isinstance(module_[1], torch.nn.Linear) and module_[1].bias is not None:
-#             module_[1].bias.data.zero_()
-#     return model
-
-# %%
-# from transformers import AutoTokenizer, GPT2LMHeadModel, T5ForConditionalGeneration, T5Config
-# config = T5Config.from_pretrained('t5-small')
-# print(config)
-# model = T5ForConditionalGeneration(config)
-# model = randomize_model(model)
-# model_size = sum(t.numel() for t in model.parameters())
-# print(f"T5 size: {model_size/1000**2:.1f}M parameters")
-# modelname = 't5-small'
-# torch.save(model,modelname+'.pt')
 
 # %%
 modelname = args.model_name_teacher
@@ -206,15 +184,15 @@ target_language  = 'de'
 train_data = get_train_Dataset(train, tokenizer)# Create the DataLoader for our training set.
 logging.info('train data get')
 train_dataloader = DataLoader(train_data, sampler= SequentialSampler(train_data), 
-                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
+                        batch_size=args.batch_size, pin_memory=args.num_workers>0, num_workers=args.num_workers)
 logging.info('train data loader get')
 valid_data = get_aux_dataset(valid, tokenizer)# Create the DataLoader for our training set.
 valid_dataloader = DataLoader(valid_data, sampler=SequentialSampler(valid_data), 
-                        batch_size=args.batch_size, pin_memory=True, num_workers=2)
+                        batch_size=args.batch_size, pin_memory=args.num_workers>0, num_workers=args.num_workers)
 logging.info('valid data loader get')
 test_data = get_aux_dataset(test, tokenizer)# Create the DataLoader for our training set.
 test_dataloader = DataLoader(test_data, sampler=SequentialSampler(test_data),
-                        batch_size=args.batch_size, pin_memory=True, num_workers=2)#, sampler=RandomSampler(test_data)
+                        batch_size=args.batch_size, pin_memory=args.num_workers>0, num_workers=args.num_workers)#, sampler=RandomSampler(test_data)
 logging.info('test data loader get')
 
 # %%
@@ -229,7 +207,7 @@ model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'mod
 model_w = model_w.cuda()
 w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
 # w_optimizer = Adafactor(model_w.parameters(), lr = args.w_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
-scheduler_w  =   StepLR(w_optimizer, step_size=1, gamma=0.5)
+scheduler_w  =   StepLR(w_optimizer, step_size=args.num_step_lr, gamma=0.5)
 # scheduler_w  = Scheduler(w_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.w_lr)
 
 
@@ -315,21 +293,22 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     split_size = [wsize, synsize, vsize, Asize]
     bs = args.batch_size
 
-    w_model.train()
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
         tot_iter[0] += bs
         
+        w_model.eval()#!train
+        v_model.eval()
 
         # logging.info(f"GPU mem :{getGPUMem(device)}%")
         train_x = Variable(batch[0], requires_grad=False).to(
-            device, non_blocking=True)
+            device, non_blocking=False)
         train_x_attn = Variable(batch[1], requires_grad=False).to(
-            device, non_blocking=True)
+            device, non_blocking=False)
         train_y = Variable(batch[2], requires_grad=False).to(
-            device, non_blocking=True)
+            device, non_blocking=False)
         train_y_attn = Variable(batch[3], requires_grad=False).to(
-            device, non_blocking=True)
+            device, non_blocking=False)
         (input_w, input_syn, input_v, input_A_v) = torch.split(train_x, split_size)
         (input_w_attn, input_syn_attn, input_v_attn,
          input_A_v_attn) = torch.split(train_x_attn, split_size)
@@ -349,6 +328,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         #                                      attn_idx, lr_w, lr_v)
         #     objs_v_star_val.update(v_star_val_loss, Asize)
 
+        w_model.train()
         w_optimizer.zero_grad()
    
         loss_w = CTG_loss(input_w, input_w_attn, output_w,

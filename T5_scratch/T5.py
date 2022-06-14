@@ -109,7 +109,7 @@ class T5(nn.Module):
         # target_ids_[target_ids == self.tokenizer.pad_token_id] = -100
         temp = (self(input_ids, input_attn, target_ids = target_ids, target_attn = target_attn))
         logits = temp.logits
-        torch.save(logits,'logits.pt')
+        # torch.save(logits,'logits.pt')
         loss_seq = self._criterion(logits.view(-1,logits.shape[-1]), target_ids.view(-1)).view(batch_size,-1)
         loss_seq = loss_seq*target_attn
         count = torch.sum(target_attn,-1).squeeze_()

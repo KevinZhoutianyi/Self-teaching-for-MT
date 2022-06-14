@@ -168,3 +168,23 @@ def calc_lr(step, dim_embed, warmup_steps, lr):
 
 def save(x,name):
     torch.save(x,'./model/'+name+'.pt')
+
+# def randomize_model(model):
+#     for module_ in model.named_modules(): 
+#         # print('!',type(module_[1]))
+#         if isinstance(module_[1],(torch.nn.Linear, torch.nn.Embedding)):
+#             module_[1].weight.data.normal_(mean=0.0, std=0.001)
+#         elif isinstance(module_[1], transformers.models.t5.modeling_t5.T5LayerNorm):
+#             module_[1].weight.data.fill_(0.1)
+#         if isinstance(module_[1], torch.nn.Linear) and module_[1].bias is not None:
+#             module_[1].bias.data.zero_()
+#     return model
+# from transformers import AutoTokenizer, GPT2LMHeadModel, T5ForConditionalGeneration, T5Config
+# config = T5Config.from_pretrained('t5-small')
+# print(config)
+# model = T5ForConditionalGeneration(config)
+# model = randomize_model(model)
+# model_size = sum(t.numel() for t in model.parameters())
+# print(f"T5 size: {model_size/1000**2:.1f}M parameters")
+# modelname = 't5-small'
+# torch.save(model,modelname+'.pt')
