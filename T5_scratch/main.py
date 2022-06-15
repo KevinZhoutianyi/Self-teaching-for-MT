@@ -60,7 +60,7 @@ parser.add_argument('--w_lr', type=float,                       default=1e-3,   
 parser.add_argument('--unrolled_w_lr', type=float,              default=1e-3,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
 parser.add_argument('--unrolled_v_lr', type=float,              default=1e-3,   help='learning rate for v')
-parser.add_argument('--A_lr', type=float,                       default=0,   help='learning rate for A')
+parser.add_argument('--A_lr', type=float,                       default=1e-3,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--beta1', type=float,                      default=0.9,    help='momentum')
@@ -226,7 +226,6 @@ scheduler_v  =   StepLR(v_optimizer, step_size=args.num_step_lr, gamma=args.deca
 
 
 architect = Architect(model_w, model_v,  A, args)
-scheduler_A  =   StepLR(architect.optimizer_A, step_size=args.num_step_lr, gamma=args.decay_lr)
 
 
 # %%
@@ -300,8 +299,8 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     loader_len = len(_dataloader)
     split_size = [wsize, synsize, vsize, Asize]
     bs = args.batch_size
-    w_model.train()
-    v_model.train()
+    w_model.eval()
+    v_model.eval()
 
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
@@ -405,15 +404,15 @@ tot_iter = [0]
 for epoch in range(args.epochs):
     lr_w = scheduler_w.get_lr()[0]
     lr_v = scheduler_v.get_lr()[0]
-    lr_A = scheduler_A.get_lr()[0]
+    lr_A = architect.scheduler_A.get_lr()[0]
 
-    logging.info(f"\n\n  ----------------epoch:{epoch},\t\tlr_w:{lr_w},\t\tlr_v:{lr_v},\t\tlr_A:{args.A_lr}----------------")
+    logging.info(f"\n\n  ----------------epoch:{epoch},\t\tlr_w:{lr_w},\t\tlr_v:{lr_v},\t\tlr_A:{lr_A}----------------")
 
     w_train_loss,v_train_loss =  my_train(epoch, train_dataloader, valid_dataloader, model_w, model_v,  architect, A, w_optimizer, v_optimizer, lr_w,lr_v,tot_iter)
     
     scheduler_w.step()
     scheduler_v.step()
-    scheduler_A.step()
+    architect.scheduler_A.step()
 
 
     logging.info(f"w_train_loss:{w_train_loss},v_train_loss:{v_train_loss}")
@@ -427,7 +426,13 @@ torch.save(model_v,'./model/'+now+'model_v.pt')
 
 
 # %%
-torch.load('logits.pt')
+x  = tokenize(['im kevin'],tokenizer,512,True)[0]
+print(x)
+x = torch.tensor(x,device='cuda')
+x
+
+# %%
+model_w.model.generate(input_ids = x, num_beams = 4, early_stopping = True, max_length = max_length, length_penalty =0.6, repetition_penalty = 0.8, use_cache=True)
 
 # %%
 
