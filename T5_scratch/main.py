@@ -125,13 +125,18 @@ modelname = args.model_name_teacher
 pretrained  =  AutoModelForSeq2SeqLM.from_pretrained(modelname)
 pathname = modelname.replace('/','')
 logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
-torch.save(pretrained,pathname+'.pt')
+
+if(exists(pathname+'.pt')==False):
+    logging.info(f'saving to {pathname}')
+    torch.save(pretrained,pathname+'.pt')
 
 modelname = args.model_name_student
 pretrained  =  AutoModelForSeq2SeqLM.from_pretrained(modelname)
 pathname = modelname.replace('/','')
 logging.info(f'modelsize:{count_parameters_in_MB(pretrained)}MB')
-torch.save(pretrained,pathname+'.pt')
+if(exists(pathname+'.pt')==False):
+    logging.info(f'saving to {pathname}')
+    torch.save(pretrained,pathname+'.pt')
 
 # %%
 
