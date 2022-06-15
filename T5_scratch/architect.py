@@ -186,9 +186,9 @@ class Architect(object):
 
         for v, g in zip(self.A.parameters(), implicit_grads_A):
             if v.grad is None:
-                v.grad = Variable(-g.data)
+                v.grad = Variable(g.data)
             else:
-                v.grad.data.copy_(-g.data)
+                v.grad.data.copy_(g.data)
 
         self.optimizer_A.step()
 
