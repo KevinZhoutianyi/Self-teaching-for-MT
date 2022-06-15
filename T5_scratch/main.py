@@ -39,8 +39,8 @@ parser.add_argument('--test_num_points', type=int,              default = 50, he
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=4,      help='train_w_num_points for each batch')
-parser.add_argument('--train_v_synthetic_num_points', type=int, default=4,      help='train_v_synthetic_num_points for each batch')
-parser.add_argument('--train_v_num_points', type=int,           default=4,      help='train_v_num_points for each batch')
+parser.add_argument('--train_v_synthetic_num_points', type=int, default=8,      help='train_v_synthetic_num_points for each batch')
+parser.add_argument('--train_v_num_points', type=int,           default=0,      help='train_v_num_points for each batch')
 parser.add_argument('--train_A_num_points', type=int,           default=4,      help='train_A_num_points decay for each batch')
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
@@ -60,7 +60,7 @@ parser.add_argument('--w_lr', type=float,                       default=1e-3,   
 parser.add_argument('--unrolled_w_lr', type=float,              default=1e-3,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
 parser.add_argument('--unrolled_v_lr', type=float,              default=1e-3,   help='learning rate for v')
-parser.add_argument('--A_lr', type=float,                       default=1e-2,   help='learning rate for A')
+parser.add_argument('--A_lr', type=float,                       default=0,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--beta1', type=float,                      default=0.9,    help='momentum')
@@ -71,8 +71,8 @@ parser.add_argument('--decay_lr', type=float,                   default=0.7,    
 # parser.add_argument('--smoothing', type=float,                  default=0.1,    help='labelsmoothing')
 
 
-parser.add_argument('--traindata_loss_ratio', type=float,       default=0,    help='human translated data ratio')
-parser.add_argument('--syndata_loss_ratio', type=float,         default=1,    help='augmented dataset ratio')
+parser.add_argument('--traindata_loss_ratio', type=float,       default=0.5,    help='human translated data ratio')
+parser.add_argument('--syndata_loss_ratio', type=float,         default=0.5,    help='augmented dataset ratio')
 
 parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
 parser.add_argument('--train_A', type=int,                      default=1 ,     help='whether train A')
@@ -324,16 +324,24 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         (output_w_attn, _, output_v_attn, output_A_v_attn) = torch.split(
             train_y_attn, split_size)
         attn_idx = attn_idx_list[wsize*step:(wsize*step+wsize)]
+        if(True):# let v train on syn data and w data
+            input_v = input_w
+            input_v_attn = input_w_attn
+            output_v = output_w
+            output_v_attn = output_w_attn
+            vsize = wsize
 
 
-        # if (args.train_A == 1):
-        #     epsilon_w = args.unrolled_w_lr
-        #     epsilon_v  = args.unrolled_v_lr
-        #     v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, output_w_attn, w_optimizer,
-        #                                      input_v, input_v_attn, output_v, output_v_attn, input_syn, input_syn_attn,
-        #                                      input_A_v, input_A_v_attn, output_A_v, output_A_v_attn, v_optimizer,
-        #                                      attn_idx, epsilon_w, epsilon_v)
-        #     objs_v_star_val.update(v_star_val_loss, Asize)
+
+
+        if (args.train_A == 1):
+            epsilon_w = args.unrolled_w_lr
+            epsilon_v  = args.unrolled_v_lr
+            v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, output_w_attn, w_optimizer,
+                                             input_v, input_v_attn, output_v, output_v_attn, input_syn, input_syn_attn,
+                                             input_A_v, input_A_v_attn, output_A_v, output_A_v_attn, v_optimizer,
+                                             attn_idx, epsilon_w, epsilon_v)
+            objs_v_star_val.update(v_star_val_loss, Asize)
 
         w_optimizer.zero_grad()
    
@@ -346,21 +354,22 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         # assert False
 
 
-        # v_optimizer.zero_grad()
-        # loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
-        # loss = my_loss2(input_v, input_v_attn, output_v,
-        #                 output_v_attn, v_model)
-        # v_loss = (args.traindata_loss_ratio*loss +
-        #           loss_aug*args.syndata_loss_ratio)
-        # v_trainloss_acc += v_loss.item()
-        # v_loss.backward()
-        # objs_v_syn.update(loss_aug.item(), synsize)
-        # objs_v_train.update(loss.item(), vsize)
-        # v_optimizer.step()
+        v_optimizer.zero_grad()
+        loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
 
-        # with torch.no_grad():
-        #     valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
-        #     objs_v_val.update(valloss.item(), Asize)
+        loss = my_loss2(input_v, input_v_attn, output_v,
+                        output_v_attn, v_model)
+        v_loss = (args.traindata_loss_ratio*loss +
+                  loss_aug*args.syndata_loss_ratio)
+        v_trainloss_acc += v_loss.item()
+        v_loss.backward()
+        objs_v_syn.update(loss_aug.item(), synsize)
+        objs_v_train.update(loss.item(), vsize)
+        v_optimizer.step()
+
+        with torch.no_grad():
+            valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
+            objs_v_val.update(valloss.item(), Asize)
 
         progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
@@ -369,6 +378,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             logging.info(str(("Attention Weights A : ", A.ReLU(A.alpha))))
             torch.save(model_v,'./model/'+'model_w.pt')#+now+
             torch.save(model_v,'./model/'+'model_v.pt')
+            torch.save(A,'./model/'+'A.pt')
 
         if(tot_iter[0] % args.rep_num == 0 and tot_iter[0] != 0):
             logging.info(f"{progress:5.3}%:\t  W_train_loss:{objs_w.avg:^.7f}\tV_train_syn_loss:{objs_v_syn.avg:^.7f}\tV_train_loss:{objs_v_train.avg:^.7f}\t  V_star_val_loss:{objs_v_star_val.avg:^.7f}\t  V_val_loss:{objs_v_val.avg:^.7f}")
