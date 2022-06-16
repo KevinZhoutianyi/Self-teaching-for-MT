@@ -189,3 +189,6 @@ def save(x,name):
 # print(f"T5 size: {model_size/1000**2:.1f}M parameters")
 # modelname = 't5-small'
 # torch.save(model,modelname+'.pt')
+def compare_model(m1,m2):
+    for k1,k2 in zip(m1.state_dict(),m1.state_dict()):
+        print(k1[:30],'\t',torch.sum(m1.state_dict()[k1]-m2.state_dict()[k2]))
