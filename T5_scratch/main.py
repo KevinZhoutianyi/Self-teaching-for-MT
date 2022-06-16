@@ -304,8 +304,8 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     loader_len = len(_dataloader)
     split_size = [wsize, synsize, vsize, Asize]
     bs = args.batch_size
-    w_model.eval()
-    v_model.eval()
+    w_model.train()
+    v_model.train()
 
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
@@ -348,14 +348,13 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             objs_v_star_val.update(v_star_val_loss, Asize)
 
         w_optimizer.zero_grad()
-   
         loss_w = CTG_loss(input_w, input_w_attn, output_w,
                           output_w_attn, attn_idx, A, w_model)
         w_trainloss_acc += loss_w.item()
         loss_w.backward()
+        grad_dic = {x[0]:x[1].grad for x in w_model.named_parameters()}
         objs_w.update(loss_w.item(), wsize)
         w_optimizer.step()
-        # assert False
 
 
         v_optimizer.zero_grad()
@@ -371,6 +370,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         objs_v_train.update(loss.item(), vsize)
         v_optimizer.step()
 
+        
         with torch.no_grad():
             valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
             objs_v_val.update(valloss.item(), Asize)
@@ -429,39 +429,6 @@ torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
 
-
-# %%
-x  = tokenize(['im kevin'],tokenizer,512,True)[0]
-print(x)
-x = torch.tensor(x,device='cuda')
-x
-
-# %%
-model_w.model.generate(input_ids = x, num_beams = 4, early_stopping = True, max_length = max_length, length_penalty =0.6, repetition_penalty = 0.8, use_cache=True)
-
-# %%
-
-
-# %%
-m1 = torch.load('main_v.pt')
-m1.eval()
-m2 = torch.load('unrolled_v.pt')
-m2.eval()
-''
-for k1, k2 in zip(m1.state_dict(), m2.state_dict()):
-    v1= m1.state_dict()[k1]
-    v2= m2.state_dict()[k2]
-    print(k1,k2)
-    # print(v1,v2)
-    print((abs(v1.data-v2.data)).sum())
-
-# %%
-a = torch.ones(1)
-a.add(1)
-
-
-# %%
-a
 
 # %%
 
