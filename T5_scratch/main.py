@@ -33,8 +33,8 @@ from torch.optim.lr_scheduler import StepLR
 parser = argparse.ArgumentParser("main")
 
 
-parser.add_argument('--valid_num_points', type=int,             default = 100, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 200, help='train data number')
+parser.add_argument('--valid_num_points', type=int,             default = 10, help='validation data number')
+parser.add_argument('--train_num_points', type=int,             default = 500, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = 50, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
@@ -280,7 +280,7 @@ def my_test(_dataloader,model,epoch):
     # del test_dataloaderx,acc,counter,test_dataloaderx_attn,sacrebleu_score,bleu_score,test_dataloadery,test_dataloadery_attn,ls,pre,x_decoded,pred_decoded,label_decoded,pred_str,label_str,pred_list,label_list
     # gc.collect()
     # torch.cuda.empty_cache()
-    model.train()
+    model.eval()
 
         
 
@@ -304,8 +304,8 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     loader_len = len(_dataloader)
     split_size = [wsize, synsize, vsize, Asize]
     bs = args.batch_size
-    w_model.train()
-    v_model.train()
+    w_model.eval()
+    v_model.eval()
 
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
@@ -369,7 +369,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         objs_v_train.update(loss.item(), vsize)
         v_optimizer.step()
 
-        
         with torch.no_grad():
             valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
             objs_v_val.update(valloss.item(), Asize)
