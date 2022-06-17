@@ -49,7 +49,7 @@ parser.add_argument('--model_name_teacher', type=str,           default='google/
 parser.add_argument('--model_name_student', type=str,           default='google/t5-small-lm-adapt',      help='model_name')
 parser.add_argument('--exp_name', type=str,                     default='T5spec',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=50,      help='report times for 1 epoch')
-parser.add_argument('--test_num', type=int,                     default=2000,      help='test times for 1 epoch')
+parser.add_argument('--test_num', type=int,                     default=200,      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=500,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
@@ -352,7 +352,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
                           output_w_attn, attn_idx, A, w_model)
         w_trainloss_acc += loss_w.item()
         loss_w.backward()
-        grad_dic = {x[0]:x[1].grad for x in w_model.named_parameters()}
         objs_w.update(loss_w.item(), wsize)
         w_optimizer.step()
 
@@ -380,9 +379,13 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             my_test(validdataloader, model_w, epoch)
             my_test(validdataloader, model_v, epoch)
             logging.info(str(("Attention Weights A : ", A.ReLU(A.alpha))))
-            torch.save(model_v,'./model/'+'model_w.pt')#+now+
+            torch.save(model_w,'./model/'+'model_w.pt')#+now+
             torch.save(model_v,'./model/'+'model_v.pt')
             torch.save(A,'./model/'+'A.pt')
+            torch.save(model_w,os.path.join(wandb.run.dir, "model_w.pt"))
+            torch.save(model_v,os.path.join(wandb.run.dir, "model_v.pt"))
+            torch.save(A,os.path.join(wandb.run.dir, "A.pt"))
+            wandb.save("./files/*.pt", base_path="./files", policy="live")
 
         if(tot_iter[0] % args.rep_num == 0 and tot_iter[0] != 0):
             logging.info(f"{progress:5.3}%:\t  W_train_loss:{objs_w.avg:^.7f}\tV_train_syn_loss:{objs_v_syn.avg:^.7f}\tV_train_loss:{objs_v_train.avg:^.7f}\t  V_star_val_loss:{objs_v_star_val.avg:^.7f}\t  V_val_loss:{objs_v_val.avg:^.7f}")
