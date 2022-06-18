@@ -45,8 +45,8 @@ class Architect(object):
         self.args = args
         self.A = A
 
-        self.optimizer_A = torch.optim.Adam(self.A.parameters(),
-                                            lr=args.A_lr,  betas=(0.9, 0.98))
+        self.optimizer_A = torch.optim.SGD(self.A.parameters(),  lr=args.A_lr)
+
         
         self.scheduler_A  =   StepLR(self.optimizer_A, step_size=args.num_step_lr, gamma=args.decay_lr)
 
@@ -168,11 +168,11 @@ class Architect(object):
              
         unrolled_w_model = self._compute_unrolled_w_model(
             input_w, output_w, input_w_attn, output_w_attn, attn_idx, lr_w, w_optimizer)
-        unrolled_w_model.train() 
+        unrolled_w_model.eval() 
 
         unrolled_v_model = self._compute_unrolled_v_model(
             input_v, input_v_attn, output_v, output_v_attn, input_syn, input_syn_attn, unrolled_w_model,  lr_v, v_optimizer)
-        unrolled_v_model.train()
+        unrolled_v_model.eval()
         unrolled_v_loss = my_loss2(
             input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,unrolled_v_model)
 
@@ -183,13 +183,13 @@ class Architect(object):
 
         implicit_grads_A = self._outer_A(vector_s_dash, input_w, output_w, input_w_attn,
                                          output_w_attn, input_v, input_v_attn, attn_idx, unrolled_w_model, lr_w, lr_v)
-
         self.optimizer_A.zero_grad()
         for v, g in zip(self.A.parameters(), implicit_grads_A):
             if v.grad is None:
                 v.grad = Variable(g.data)
             else:
                 v.grad.data.copy_(g.data)
+            
 
         self.optimizer_A.step()
 
@@ -216,10 +216,8 @@ class Architect(object):
         # change to ctg dataset importance
         # change to .parameters()
         grads_n = torch.autograd.grad(loss, self.A.parameters())
-
         for p, v in zip(self.w_model.parameters(), vector):
             p.data = p.data.add(R, v)
-
         return [(x-y).div_(2*R) for x, y in zip(grads_p, grads_n)]
 
     ######################################################################
@@ -257,7 +255,6 @@ class Architect(object):
 
         grad = [(x-y).div_((2*R1)/(eta_w*eta_v))
                 for x, y in zip(grad_part1, grad_part2)]
-
         return grad
 
 # # print("123")

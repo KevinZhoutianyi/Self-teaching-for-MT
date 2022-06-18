@@ -34,7 +34,7 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = 10, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 500, help='train data number')
+parser.add_argument('--train_num_points', type=int,             default = 200, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = 50, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
@@ -49,7 +49,7 @@ parser.add_argument('--model_name_teacher', type=str,           default='google/
 parser.add_argument('--model_name_student', type=str,           default='google/t5-small-lm-adapt',      help='model_name')
 parser.add_argument('--exp_name', type=str,                     default='T5spec',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=50,      help='report times for 1 epoch')
-parser.add_argument('--test_num', type=int,                     default=200,      help='test times for 1 epoch')
+parser.add_argument('--test_num', type=int,                     default=80,      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=500,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
@@ -60,7 +60,7 @@ parser.add_argument('--w_lr', type=float,                       default=1e-3,   
 parser.add_argument('--unrolled_w_lr', type=float,              default=1e-3,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
 parser.add_argument('--unrolled_v_lr', type=float,              default=1e-3,   help='learning rate for v')
-parser.add_argument('--A_lr', type=float,                       default=1e-3,   help='learning rate for A')
+parser.add_argument('--A_lr', type=float,                       default=10,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--beta1', type=float,                      default=0.9,    help='momentum')
@@ -280,7 +280,7 @@ def my_test(_dataloader,model,epoch):
     # del test_dataloaderx,acc,counter,test_dataloaderx_attn,sacrebleu_score,bleu_score,test_dataloadery,test_dataloadery_attn,ls,pre,x_decoded,pred_decoded,label_decoded,pred_str,label_str,pred_list,label_list
     # gc.collect()
     # torch.cuda.empty_cache()
-    model.train()
+    model.eval()
 
         
 
@@ -304,8 +304,8 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     loader_len = len(_dataloader)
     split_size = [wsize, synsize, vsize, Asize]
     bs = args.batch_size
-    w_model.train()
-    v_model.train()
+    w_model.eval()
+    v_model.eval()
 
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
@@ -431,6 +431,9 @@ torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
 
+
+# %%
+A.ReLU(A.alpha[[1,2,3]])
 
 # %%
 
