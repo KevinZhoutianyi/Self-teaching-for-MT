@@ -50,7 +50,7 @@ parser.add_argument('--model_name_student', type=str,           default='google/
 parser.add_argument('--model_name_de2en', type=str,             default='Onlydrinkwater/t5-small-de-en-mt',      help='model_name')
 parser.add_argument('--exp_name', type=str,                     default='T5spec',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=50,      help='report times for 1 epoch')
-parser.add_argument('--test_num', type=int,                     default=80,      help='test times for 1 epoch')
+parser.add_argument('--test_num', type=int,                     default=800,      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=500,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
@@ -72,8 +72,8 @@ parser.add_argument('--decay_lr', type=float,                   default=0.7,    
 # parser.add_argument('--smoothing', type=float,                  default=0.1,    help='labelsmoothing')
 
 
-parser.add_argument('--traindata_loss_ratio', type=float,       default=0.5,    help='human translated data ratio')
-parser.add_argument('--syndata_loss_ratio', type=float,         default=0.5,    help='augmented dataset ratio')
+parser.add_argument('--traindata_loss_ratio', type=float,       default=0,    help='human translated data ratio')
+parser.add_argument('--syndata_loss_ratio', type=float,         default=1,    help='augmented dataset ratio')
 
 parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
 parser.add_argument('--train_A', type=int,                      default=1 ,     help='whether train A')
@@ -383,7 +383,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         with torch.no_grad():
             valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
             objs_v_val.update(valloss.item(), Asize)
-
+            
         progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
             my_test(validdataloader, model_w, epoch)
@@ -445,22 +445,27 @@ torch.save(model_v,'./model/'+now+'model_v.pt')
 
 
 # %%
-A.ReLU(A.alpha[[1,2,3]])
+m = load()
 
 # %%
-model_en2de = (torch.load(args.model_name_teacher.replace('/','')+'.pt')).encoder
+torch.sum(m[2][0])
 
 # %%
-for k in model_en2de.parameters():
-    print(k)
+m[-1]
 
 # %%
-for k in model_v.parameters():
-    k.requires_grad=False
+s = []
+torch.set_printoptions(threshold=500,linewidth=500,edgeitems=100)
+for k,v in A.named_parameters():
+    if(v.requires_grad==True):
+        s = v
+        break
 
 # %%
-for k in model_v.parameters():
-    print(k.requires_grad)
+s
+
+# %%
+torch.sum(s.data)
 
 # %%
 

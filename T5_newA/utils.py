@@ -160,3 +160,12 @@ def save(x,name):
 def compare_model(m1,m2):
     for k1,k2 in zip(m1.state_dict(),m1.state_dict()):
         print(k1[:30],'\t',torch.sum(m1.state_dict()[k1]-m2.state_dict()[k2]))
+def load():
+    import glob
+    # All files and directories ending with .txt and that don't begin with a dot:
+    l =  glob.glob("./model/*.pt")
+    print(l)
+    m = []
+    for x in l:
+        m.append(torch.load(x))
+    return m

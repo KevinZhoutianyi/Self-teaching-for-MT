@@ -3,6 +3,7 @@ import random
 import torch
 import numpy as np
 from MT_hyperparams import *
+from utils import *
 
 def seed_torch(seed=0):
     random.seed(seed)
@@ -25,16 +26,18 @@ class attention_params(torch.nn.Module):# A and B
             k.requires_grad=False
         self.linear = torch.nn.Linear(512*2, 1)
         self.linear.require_grad = True
-        self.ReLU = torch.nn.ReLU()
+        self.Sigmoid = torch.nn.Sigmoid()
         
     def forward(self, x, x_attn, y,y_attn):
-        # x = torch.mean(x,1)
-        # y = torch.mean(y,1)
         encoded_x = self.model_en2de(x,x_attn).last_hidden_state#bs,seqlen,hiddensize
         encoded_x = torch.sum(encoded_x,1)/torch.sum(x_attn,1,keepdim=True)
+        save(encoded_x,'encoded_x')
         encoded_y = self.model_de2en(y,y_attn).last_hidden_state#bs,seqlen,hiddensize
         encoded_y = torch.sum(encoded_y,1)/torch.sum(y_attn,1,keepdim=True)#bs,hiddensize
-        weight = self.ReLU(self.linear(torch.hstack((encoded_x,encoded_y))))#bs,1
+        save(encoded_y,'encoded_y')
+        save(self.linear(torch.hstack((encoded_x,encoded_y))),'stack')
+        weight = self.Sigmoid(self.linear(torch.hstack((encoded_x,encoded_y))))#bs,1
+        save(torch.squeeze(weight),'weight')
         return torch.squeeze(weight)
         # weight = 
         
