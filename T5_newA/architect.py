@@ -195,7 +195,6 @@ class Architect(object):
             else:
                 v.grad.data.copy_(g.data)
             
-        save(implicit_grads_A,'implicit_grads_A')
         self.optimizer_A.step()
 
         del unrolled_w_model
