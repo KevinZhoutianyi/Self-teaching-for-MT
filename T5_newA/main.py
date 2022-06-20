@@ -34,7 +34,7 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = 10, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 200, help='train data number')
+parser.add_argument('--train_num_points', type=int,             default = 500, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = 50, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
@@ -50,7 +50,7 @@ parser.add_argument('--model_name_student', type=str,           default='google/
 parser.add_argument('--model_name_de2en', type=str,             default='Onlydrinkwater/t5-small-de-en-mt',      help='model_name')
 parser.add_argument('--exp_name', type=str,                     default='T5spec',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=50,      help='report times for 1 epoch')
-parser.add_argument('--test_num', type=int,                     default=800,      help='test times for 1 epoch')
+parser.add_argument('--test_num', type=int,                     default=8000,      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=500,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
@@ -64,8 +64,8 @@ parser.add_argument('--unrolled_v_lr', type=float,              default=1e-3,   
 parser.add_argument('--A_lr', type=float,                       default=1e-3,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
-parser.add_argument('--beta1', type=float,                      default=0.9,    help='momentum')
-parser.add_argument('--beta2', type=float,                      default=0.98,    help='momentum')
+parser.add_argument('--beta1', type=float,                      default=0,    help='momentum')
+parser.add_argument('--beta2', type=float,                      default=0,    help='momentum')
 parser.add_argument('--warm', type=float,                       default=10,    help='warmup step')
 parser.add_argument('--num_step_lr', type=float,                default=1,    help='warmup step')
 parser.add_argument('--decay_lr', type=float,                   default=0.7,    help='warmup step')
@@ -228,7 +228,7 @@ model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'mod
 model_w = model_w.cuda()
 w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
 # w_optimizer = Adafactor(model_w.parameters(), lr = args.w_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
-scheduler_w  =   StepLR(w_optimizer, step_size=args.num_step_lr, gamma=args.decay_lr)
+scheduler_w  =   StepLR(w_optimizer, step_size=1e10, gamma=args.decay_lr)
 # scheduler_w  = Scheduler(w_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.w_lr)
 
 
@@ -237,7 +237,7 @@ model_v = T5(criterion=criterion_v, tokenizer= tokenizer, args = args, name = 'm
 model_v = model_v.cuda()
 v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.v_lr ,  betas=(args.beta1,args.beta2) ,eps=1e-9  )
 # v_optimizer =Adafactor(model_v.parameters(), lr = args.v_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
-scheduler_v  =   StepLR(v_optimizer, step_size=args.num_step_lr, gamma=args.decay_lr)
+scheduler_v  =   StepLR(v_optimizer, step_size=1e10, gamma=args.decay_lr)
 # scheduler_v  = Scheduler(v_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.v_lr)
 
 
@@ -322,6 +322,10 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     for step, batch in enumerate(_dataloader):
         tot_iter[0] += bs
         
+        # w_model.reset()
+        # w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
+        # v_model.reset()
+        # v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
 
         # logging.info(f"GPU mem :{getGPUMem(device)}%")
         train_x = Variable(batch[0], requires_grad=False).to(
@@ -366,7 +370,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         objs_w.update(loss_w.item(), wsize)
         w_optimizer.step()
 
-
         v_optimizer.zero_grad()
         loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
 
@@ -383,7 +386,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         with torch.no_grad():
             valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
             objs_v_val.update(valloss.item(), Asize)
-            
         progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
             my_test(validdataloader, model_w, epoch)
@@ -398,7 +400,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             wandb.save("./files/*.pt", base_path="./files", policy="live")
 
         if(tot_iter[0] % args.rep_num == 0 and tot_iter[0] != 0):
-            logging.info(f"{progress:5.3}%:\t  W_train_loss:{objs_w.avg:^.7f}\tV_train_syn_loss:{objs_v_syn.avg:^.7f}\tV_train_loss:{objs_v_train.avg:^.7f}\t  V_star_val_loss:{objs_v_star_val.avg:^.7f}\t  V_val_loss:{objs_v_val.avg:^.7f}")
+            logging.info(f"{progress:5.3}%:\t  W_train_loss:{objs_w.avg:^.7f}\tV_train_syn_loss:{objs_v_syn.avg:^.7f}\tV_train_loss:{objs_v_train.avg:^.7f}\t  V_star_val_loss:{objs_v_star_val.avg:^.7f}\t  improvement:{(objs_v_star_val.avg-objs_v_val.avg):^.7f}")
             logging.info(f"{A(input_w, input_w_attn, output_w,output_w_attn)}")
             wandb.log({'W_train_loss': objs_w.avg})
             wandb.log({'V_train_syn_loss': objs_v_syn.avg})
@@ -410,7 +412,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             objs_w.reset()
             objs_v_star_val.reset()
             objs_v_val.reset()
-
     return w_trainloss_acc, v_trainloss_acc
 
 
@@ -445,7 +446,7 @@ torch.save(model_v,'./model/'+now+'model_v.pt')
 
 
 # %%
-m = load()
+
 
 # %%
 torch.sum(m[2][0])
