@@ -24,9 +24,10 @@ class attention_params(torch.nn.Module):# A and B
             k.requires_grad=False
         for k in self.model_de2en.parameters():
             k.requires_grad=False
-        self.linear = torch.nn.Linear(512*2, 1)
+        self.linear = torch.nn.Linear(512*2, 1, bias=False)
         self.linear.require_grad = True
         self.Sigmoid = torch.nn.Sigmoid()
+        # torch.nn.init.xavier_uniform(self.linear.weight)
         
     def forward(self, x, x_attn, y,y_attn):
         encoded_x = self.model_en2de(x,x_attn).last_hidden_state#bs,seqlen,hiddensize
@@ -34,6 +35,7 @@ class attention_params(torch.nn.Module):# A and B
         encoded_y = self.model_de2en(y,y_attn).last_hidden_state#bs,seqlen,hiddensize
         encoded_y = torch.sum(encoded_y,1)/torch.sum(y_attn,1,keepdim=True)#bs,hiddensize
         weight = self.Sigmoid(self.linear(torch.hstack((encoded_x,encoded_y))))#bs,1
+        # print(torch.squeeze(weight))
         return torch.squeeze(weight)
         # weight = 
         

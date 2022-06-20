@@ -47,7 +47,6 @@ class Architect(object):
         self.param = list(filter(lambda x: x.requires_grad, self.A.parameters()))
         for x in self.param:
             print(x)
-        print("!",self.param)
 
         self.optimizer_A = torch.optim.Adam(self.param,  lr=args.A_lr)
 
@@ -72,7 +71,7 @@ class Architect(object):
         step = w_optimizer.state[w_optimizer.param_groups[0]["params"][-1]]["step"]+1
         bias_correction1 = 1 - self.beta1 ** step
         bias_correction2 = 1 - self.beta2 ** step
-        g = _concat(torch.autograd.grad(loss, self.w_model.parameters(), retain_graph=False))
+        g = _concat(torch.autograd.grad(loss, self.w_model.parameters(), retain_graph=True))
         
         m = _concat(w_optimizer.state[v]['exp_avg']
                             for v in self.w_model.parameters()).mul(self.beta1) + (g).mul(1-self.beta1)
@@ -127,7 +126,7 @@ class Architect(object):
         step =v_optimizer.state[v_optimizer.param_groups[0]["params"][-1]]["step"]+1
         bias_correction1 = 1 - self.beta1 ** step
         bias_correction2 = 1 - self.beta2 ** step
-        g = _concat(torch.autograd.grad(v_loss, self.v_model.parameters(), retain_graph=False))
+        g = _concat(torch.autograd.grad(v_loss, self.v_model.parameters(), retain_graph=True))
         
         m = _concat(v_optimizer.state[v]['exp_avg']
                             for v in self.v_model.parameters()).mul(self.beta1) + (g).mul(1-self.beta1)
@@ -188,7 +187,6 @@ class Architect(object):
         implicit_grads_A = self._outer_A(vector_s_dash, input_w, output_w, input_w_attn,
                                          output_w_attn, input_v, input_v_attn,    unrolled_w_model, lr_w, lr_v)
         self.optimizer_A.zero_grad()
-        
         for v, g in zip(self.param, implicit_grads_A):
             if v.grad is None:
                 v.grad = Variable(g.data)
@@ -237,7 +235,7 @@ class Architect(object):
         loss_aug_p = calc_loss_aug(
             input_v, input_v_attn, unrolled_w_model, self.v_model)
         vector_dash = torch.autograd.grad(
-            loss_aug_p, unrolled_w_model.parameters(), retain_graph=False)
+            loss_aug_p, unrolled_w_model.parameters(), retain_graph=True)
         grad_part1 = self._hessian_vector_product_A(
             vector_dash, w_input, w_target, w_input_attn, w_target_attn)
 
@@ -249,7 +247,7 @@ class Architect(object):
             input_v, input_v_attn, unrolled_w_model, self.v_model)
 
         vector_dash = torch.autograd.grad(
-            loss_aug_m, unrolled_w_model.parameters(), retain_graph=False)
+            loss_aug_m, unrolled_w_model.parameters(), retain_graph=True)
 
         grad_part2 = self._hessian_vector_product_A(
             vector_dash, w_input, w_target, w_input_attn, w_target_attn)

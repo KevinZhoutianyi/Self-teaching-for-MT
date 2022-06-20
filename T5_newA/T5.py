@@ -46,12 +46,12 @@ class T5(nn.Module):
         self.tokenizer = tokenizer
         self.vocab_size = tokenizer.vocab_size
         self.pad_token_id = tokenizer.pad_token_id
-        
+        self.name = name
         self._criterion = criterion
         self.args = args
-        self.model = torch.load(args.model_name_teacher.replace('/','')+'.pt')
+        self.model = torch.load(args.model_name_teacher.replace('/','')+'.pt').cuda()
         if(name=='model_v_in_main' or name=='unrolled_v'):
-            self.model = torch.load(args.model_name_student.replace('/','')+'.pt')
+            self.model = torch.load(args.model_name_student.replace('/','')+'.pt').cuda()
         # self.encoder = self.model.get_encoder()
         self.embedding = Embedding_(self.model.shared).requires_grad_()#convert token to 512dimensions vector
         self.enc_emb_scale = 1
@@ -140,7 +140,13 @@ class T5(nn.Module):
         model_new.model.load_state_dict(self.model.state_dict())
         
         return model_new
-
+    def reset(self):
+        args = self.args
+        self.model = torch.load(args.model_name_teacher.replace('/','')+'.pt').cuda()
+        if(self.name=='model_v_in_main' or self.name=='unrolled_v'):
+            self.model = torch.load(args.model_name_student.replace('/','')+'.pt').cuda()
+        # self.encoder = self.model.get_encoder()
+        self.embedding = Embedding_(self.model.shared).requires_grad_()#convert token to 512dimensions vector
 if __name__ == "__main__":
     # print("T5 main")
     t5_tokenizer = T5Tokenizer.from_pretrained('t5-base')

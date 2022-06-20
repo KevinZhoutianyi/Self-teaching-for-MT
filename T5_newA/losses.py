@@ -62,24 +62,10 @@ def my_loss2(input_ids, input_attn, target_ids, target_attn, model):
 def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
     w_model.apply(turnoff_dropout)
     output_ids = w_model.generate(input_syn_ids, num_beams=1)[:,1:].contiguous()
-    # print(output_ids)
     att = (output_ids > 0.5).long()
-    # print(att)
     w_logits = w_model(input_syn_ids, input_syn_attn, target_ids=output_ids, target_attn=att).logits  # TODO,forward_decoderinput
-    '''
-    [ 1674, 26114,  9458,     6,     3,   362,  2701,  2587, 12957,  1197,
-            25363, 12458,  1818, 12957, 23020,     7,     1,     1,  1674,     1,
-                1,     3,  1674,  1674,  1674,     0,  1674,  1674,  1674,  1674,
-            1674,  1674,  1674,  1674,  1674,  1674,     3,  1674,  1674,  1674,
-            1674,  1674,     0,  1674,  1674,  1674,  1674,  1674,  1674,  1674,
-            1674,  1674,  1674,  1674,     3,  1674]]
-    whether this w_logits, the ouput outside att will affect the gumble?
-    no!model.loss only calculate for the loss for the target which attn = 1,
-    '''
-    # print(torch.max(w_logits,-1))
     softmax_w_logtis = torch.softmax(w_logits,-1)# bs,sentlen,vocabsize
     hard_w_logits = torch.argmax(softmax_w_logtis,-1) #bs,sentlen
-    # w_soft_idx, _ = torch.max(w_logits, dim=-1, keepdims=True)
     one_hot = torch.zeros(
         softmax_w_logtis.shape[0], softmax_w_logtis.shape[1], softmax_w_logtis.shape[-1], device=torch.device('cuda:0'))
 
