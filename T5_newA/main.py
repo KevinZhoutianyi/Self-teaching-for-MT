@@ -34,7 +34,7 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = 10, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 500, help='train data number')
+parser.add_argument('--train_num_points', type=int,             default = 200, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = 50, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
@@ -322,10 +322,10 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     for step, batch in enumerate(_dataloader):
         tot_iter[0] += bs
         
-        # w_model.reset()
-        # w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
-        # v_model.reset()
-        # v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
+        w_model.reset()
+        w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
+        v_model.reset()
+        v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
 
         # logging.info(f"GPU mem :{getGPUMem(device)}%")
         train_x = Variable(batch[0], requires_grad=False).to(
@@ -394,9 +394,9 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             torch.save(model_w,'./model/'+'model_w.pt')#+now+
             torch.save(model_v,'./model/'+'model_v.pt')
             torch.save(A,'./model/'+'A.pt')
-            torch.save(model_w,os.path.join(wandb.run.dir, "model_w.pt"))
-            torch.save(model_v,os.path.join(wandb.run.dir, "model_v.pt"))
-            torch.save(A,os.path.join(wandb.run.dir, "A.pt"))
+            torch.save(model_w.state_dict(),os.path.join(wandb.run.dir, "model_w.pt"))
+            torch.save(model_v.state_dict(),os.path.join(wandb.run.dir, "model_v.pt"))
+            torch.save(A.state_dict(),os.path.join(wandb.run.dir, "A.pt"))
             wandb.save("./files/*.pt", base_path="./files", policy="live")
 
         if(tot_iter[0] % args.rep_num == 0 and tot_iter[0] != 0):
@@ -444,29 +444,6 @@ torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
 
-
-# %%
-
-
-# %%
-torch.sum(m[2][0])
-
-# %%
-m[-1]
-
-# %%
-s = []
-torch.set_printoptions(threshold=500,linewidth=500,edgeitems=100)
-for k,v in A.named_parameters():
-    if(v.requires_grad==True):
-        s = v
-        break
-
-# %%
-s
-
-# %%
-torch.sum(s.data)
 
 # %%
 
