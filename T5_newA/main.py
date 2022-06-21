@@ -303,7 +303,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     objs_v_train = AvgrageMeter()
     objs_v_star_val = AvgrageMeter()
     objs_v_val = AvgrageMeter()
-    v_trainloss_acc = 0
+    improvement = 0
     w_trainloss_acc = 0
     # now  train_x is [num of batch, datasize], so its seperate batch for the code below
     wsize = args.train_w_num_points
@@ -377,7 +377,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
                         output_v_attn, v_model)
         v_loss = (args.traindata_loss_ratio*loss +
                   loss_aug*args.syndata_loss_ratio)
-        v_trainloss_acc += v_loss.item()
         v_loss.backward()
         objs_v_syn.update(loss_aug.item(), synsize)
         objs_v_train.update(loss.item(), vsize)
@@ -386,6 +385,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         with torch.no_grad():
             valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
             objs_v_val.update(valloss.item(), Asize)
+            improvement += (v_star_val_loss-valloss.item())
         progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
             my_test(validdataloader, model_w, epoch)
@@ -412,7 +412,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             objs_w.reset()
             objs_v_star_val.reset()
             objs_v_val.reset()
-    return w_trainloss_acc, v_trainloss_acc
+    return w_trainloss_acc, improvement
 
 
 # %%
@@ -428,14 +428,14 @@ for epoch in range(args.epochs):
 
     logging.info(f"\n\n  ----------------epoch:{epoch},\t\tlr_w:{lr_w},\t\tlr_v:{lr_v},\t\tlr_A:{lr_A}----------------")
 
-    w_train_loss,v_train_loss =  my_train(epoch, train_dataloader, valid_dataloader, model_w, model_v,  architect, A, w_optimizer, v_optimizer, lr_w,lr_v,tot_iter)
+    w_train_loss,improvement =  my_train(epoch, train_dataloader, valid_dataloader, model_w, model_v,  architect, A, w_optimizer, v_optimizer, lr_w,lr_v,tot_iter)
     
     scheduler_w.step()
     scheduler_v.step()
     architect.scheduler_A.step()
 
 
-    logging.info(f"w_train_loss:{w_train_loss},v_train_loss:{v_train_loss}")
+    logging.info(f"w_train_loss:{w_train_loss},improvement:{improvement}")
     # wandb.log({'w_train_loss': w_train_loss, 'v_train_loss':v_train_loss})
 
 

@@ -21,12 +21,17 @@ class attention_params(torch.nn.Module):# A and B
         self.model_en2de = (torch.load(args.model_name_teacher.replace('/','')+'.pt')).encoder
         self.model_de2en = (torch.load(args.model_name_de2en.replace('/','')+'.pt')).encoder
         for k in self.model_en2de.parameters():
-            k.requires_grad=True
+            k.requires_grad=False
         for k in self.model_de2en.parameters():
-            k.requires_grad=True
-        self.linear = torch.nn.Linear(512*2, 1, bias=False)
-        self.linear.require_grad = True
+            k.requires_grad=False
+        self.linear1 = torch.nn.Linear(512*2, 512, bias=False)
+        self.linear2 = torch.nn.Linear(512, 1, bias=False)
+        self.linear1.require_grad = True
+        self.linear2.require_grad = True
+        
+        self.relu =  torch.nn.ReLU()
         self.Sigmoid = torch.nn.Sigmoid()
+        self.softmax = torch.nn.Softmax()
         # torch.nn.init.xavier_uniform(self.linear.weight)
         
     def forward(self, x, x_attn, y,y_attn):
@@ -34,9 +39,10 @@ class attention_params(torch.nn.Module):# A and B
         encoded_x = torch.sum(encoded_x,1)/torch.sum(x_attn,1,keepdim=True)
         encoded_y = self.model_de2en(y,y_attn).last_hidden_state#bs,seqlen,hiddensize
         encoded_y = torch.sum(encoded_y,1)/torch.sum(y_attn,1,keepdim=True)#bs,hiddensize
-        weight = self.Sigmoid(self.linear(torch.hstack((encoded_x,encoded_y))))#bs,1
+        weight = self.relu(self.linear1(torch.hstack((encoded_x,encoded_y))))#bs,1
+        weight = self.linear2(weight)#bs,1
         # print(torch.squeeze(weight))
-        return torch.squeeze(weight)
+        return self.softmax(torch.squeeze(weight))*x.shape[0]
         # weight = 
         
         # return probs
