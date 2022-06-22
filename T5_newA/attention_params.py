@@ -21,9 +21,9 @@ class attention_params(torch.nn.Module):# A and B
         self.model_en2de = (torch.load(args.model_name_teacher.replace('/','')+'.pt')).encoder
         self.model_de2en = (torch.load(args.model_name_de2en.replace('/','')+'.pt')).encoder
         for k in self.model_en2de.parameters():
-            k.requires_grad=False
+            k.requires_grad=True
         for k in self.model_de2en.parameters():
-            k.requires_grad=False
+            k.requires_grad=True
         self.linear1 = torch.nn.Linear(512*2, 512, bias=False)
         self.linear2 = torch.nn.Linear(512, 1, bias=False)
         self.linear1.require_grad = True
