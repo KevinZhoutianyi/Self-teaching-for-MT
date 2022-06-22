@@ -71,6 +71,7 @@ parser.add_argument('--num_step_lr', type=float,                default=2,    he
 parser.add_argument('--decay_lr', type=float,                   default=0.7,    help='warmup step')
 # parser.add_argument('--smoothing', type=float,                  default=0.1,    help='labelsmoothing')
 
+parser.add_argument('--freeze', type=int,                       default=1,    help='whether freeze the pretrained encoder')
 
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0,    help='human translated data ratio')
 parser.add_argument('--syndata_loss_ratio', type=float,         default=1,    help='augmented dataset ratio')
@@ -309,8 +310,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     wsize = args.train_w_num_points
     synsize = args.train_v_synthetic_num_points
     vsize = args.train_v_num_points
-    vtrainsize = vsize+synsize
-    vtrainsize_total = train_v_num_points_len+train_v_synthetic_num_points_len
     Asize = args.train_A_num_points
     loader_len = len(_dataloader)
     split_size = [wsize, synsize, vsize, Asize]
@@ -318,10 +317,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     w_model.eval()
     v_model.eval()
 
-    # w_model.reset()
-    # w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
-    # v_model.reset()
-    # v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
         tot_iter[0] += bs
@@ -342,7 +337,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         (output_w, _, output_v, output_A_v) = torch.split(train_y, split_size)
         (output_w_attn, _, output_v_attn, output_A_v_attn) = torch.split(
             train_y_attn, split_size)
-        # attn_idx = attn_idx_list[wsize*step:(wsize*step+wsize)]
+            
         if(True):# let v train on syn data and w data
             input_v = input_w
             input_v_attn = input_w_attn
@@ -351,9 +346,8 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             vsize = wsize
 
 
-
-
-        if (args.train_A == 1):
+        output_w[step%wsize]+=1 # noise input
+        if (args.train_A == 1 and epoch>=args.pre_epochs):
             epsilon_w = args.unrolled_w_lr
             epsilon_v  = args.unrolled_v_lr
             v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, output_w_attn, w_optimizer,
@@ -362,6 +356,9 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
                                              epsilon_w, epsilon_v)
             objs_v_star_val.update(v_star_val_loss, Asize)
                             
+
+
+
         w_optimizer.zero_grad()
         loss_w = CTG_loss(input_w, input_w_attn, output_w,
                           output_w_attn, A, w_model)
@@ -370,22 +367,23 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         objs_w.update(loss_w.item(), wsize)
         w_optimizer.step()
 
-        v_optimizer.zero_grad()
-        loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
 
-        loss = my_loss2(input_v, input_v_attn, output_v,
-                        output_v_attn, v_model)
-        v_loss = (args.traindata_loss_ratio*loss +
-                  loss_aug*args.syndata_loss_ratio)
-        v_loss.backward()
-        objs_v_syn.update(loss_aug.item(), synsize)
-        objs_v_train.update(loss.item(), vsize)
-        v_optimizer.step()
-
-        with torch.no_grad():
-            valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
-            objs_v_val.update(valloss.item(), Asize)
-            improvement += (v_star_val_loss-valloss.item())
+        if(epoch>=args.pre_epochs):  
+            v_optimizer.zero_grad()
+            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
+            loss = my_loss2(input_v, input_v_attn, output_v,
+                            output_v_attn, v_model)
+            v_loss = (args.traindata_loss_ratio*loss +
+                    loss_aug*args.syndata_loss_ratio)
+            v_loss.backward()
+            objs_v_syn.update(loss_aug.item(), synsize)
+            objs_v_train.update(loss.item(), vsize)
+            v_optimizer.step()
+            with torch.no_grad():
+                valloss = my_loss2(input_A_v, input_A_v_attn,  output_A_v, output_A_v_attn,v_model)
+                objs_v_val.update(valloss.item(), Asize)
+                improvement += (v_star_val_loss-valloss.item())
+                
         progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
             my_test(validdataloader, model_w, epoch)
@@ -401,8 +399,10 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
 
         if(tot_iter[0] % args.rep_num == 0 and tot_iter[0] != 0):
             logging.info(f"{progress:5.3}%:\t  W_train_loss:{objs_w.avg:^.7f}\tV_train_syn_loss:{objs_v_syn.avg:^.7f}\tV_train_loss:{objs_v_train.avg:^.7f}\t  V_star_val_loss:{objs_v_star_val.avg:^.7f}\t  improvement:{(objs_v_star_val.avg-objs_v_val.avg):^.7f}")
-            logging.info(f"{A(input_w, input_w_attn, output_w,output_w_attn)}")
-        
+            with torch.no_grad():
+                temp = A(input_w, input_w_attn, output_w,output_w_attn)
+            logging.info(f"weight:{temp}")
+            logging.info(f'noise input weight:{temp[step%wsize]}')
             wandb.log({'W_train_loss': objs_w.avg})
             wandb.log({'V_train_syn_loss': objs_v_syn.avg})
             wandb.log({'V_train_loss': objs_v_train.avg})

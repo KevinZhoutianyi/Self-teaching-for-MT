@@ -45,7 +45,7 @@ class Architect(object):
         self.args = args
         self.A = A
         self.param = list(filter(lambda x: x.requires_grad, self.A.parameters()))
-
+        
         self.optimizer_A = torch.optim.Adam(self.param,  lr=args.A_lr)
 
         

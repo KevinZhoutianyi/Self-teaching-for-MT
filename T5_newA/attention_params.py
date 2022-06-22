@@ -21,9 +21,9 @@ class attention_params(torch.nn.Module):# A and B
         self.model_en2de = (torch.load(args.model_name_teacher.replace('/','')+'.pt')).encoder
         self.model_de2en = (torch.load(args.model_name_de2en.replace('/','')+'.pt')).encoder
         for k in self.model_en2de.parameters():
-            k.requires_grad=True
+            k.requires_grad=(args.freeze==0)
         for k in self.model_de2en.parameters():
-            k.requires_grad=True
+            k.requires_grad=(args.freeze==0)
         self.linear1 = torch.nn.Linear(512*2, 512, bias=False)
         self.linear2 = torch.nn.Linear(512, 1, bias=False)
         self.linear1.require_grad = True
@@ -40,9 +40,9 @@ class attention_params(torch.nn.Module):# A and B
         encoded_y = self.model_de2en(y,y_attn).last_hidden_state#bs,seqlen,hiddensize
         encoded_y = torch.sum(encoded_y,1)/torch.sum(y_attn,1,keepdim=True)#bs,hiddensize
         weight = self.relu(self.linear1(torch.hstack((encoded_x,encoded_y))))#bs,1
-        weight = self.Sigmoid(self.linear2(weight))+0.5#bs,1
+        weight = torch.squeeze(self.Sigmoid(self.linear2(weight)))#bs,1
         # print(torch.squeeze(weight))
-        return torch.squeeze(weight)
+        return weight*x.shape[0]/torch.sum(weight)
         # weight = 
         
         # return probs
