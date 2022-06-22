@@ -1,7 +1,7 @@
 # import numpy as np
 # import torch
 
-seed_ = 42
+seed_ = 123
 max_length = 64
 target_language = 'de'
 

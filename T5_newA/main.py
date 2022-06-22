@@ -34,7 +34,7 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = 10, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 200, help='train data number')
+parser.add_argument('--train_num_points', type=int,             default = 100, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = 50, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
@@ -67,7 +67,7 @@ parser.add_argument('--decay', type=float,                      default=1e-3,   
 parser.add_argument('--beta1', type=float,                      default=0,    help='momentum')
 parser.add_argument('--beta2', type=float,                      default=0,    help='momentum')
 parser.add_argument('--warm', type=float,                       default=10,    help='warmup step')
-parser.add_argument('--num_step_lr', type=float,                default=10,    help='warmup step')
+parser.add_argument('--num_step_lr', type=float,                default=2,    help='warmup step')
 parser.add_argument('--decay_lr', type=float,                   default=0.7,    help='warmup step')
 # parser.add_argument('--smoothing', type=float,                  default=0.1,    help='labelsmoothing')
 
@@ -402,6 +402,10 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         if(tot_iter[0] % args.rep_num == 0 and tot_iter[0] != 0):
             logging.info(f"{progress:5.3}%:\t  W_train_loss:{objs_w.avg:^.7f}\tV_train_syn_loss:{objs_v_syn.avg:^.7f}\tV_train_loss:{objs_v_train.avg:^.7f}\t  V_star_val_loss:{objs_v_star_val.avg:^.7f}\t  improvement:{(objs_v_star_val.avg-objs_v_val.avg):^.7f}")
             logging.info(f"{A(input_w, input_w_attn, output_w,output_w_attn)}")
+            save(input_w,'input_w')
+            save(input_w_attn,'input_w_attn')
+            save(output_w,'output_w')
+            save(output_w_attn,'output_w_attn')
             wandb.log({'W_train_loss': objs_w.avg})
             wandb.log({'V_train_syn_loss': objs_v_syn.avg})
             wandb.log({'V_train_loss': objs_v_train.avg})
@@ -444,6 +448,10 @@ torch.save(model_v,'./model/'+now+'model_w.pt')
 torch.save(model_v,'./model/'+now+'model_v.pt')
 
 
+
+# %%
+l = load()
+d(l[0])
 
 # %%
 
