@@ -42,7 +42,7 @@ class attention_params(torch.nn.Module):# A and B
         weight = self.relu(self.linear1(torch.hstack((encoded_x,encoded_y))))#bs,1
         weight = torch.squeeze(self.Sigmoid(self.linear2(weight)))#bs,1
         # print(torch.squeeze(weight))
-        return weight*x.shape[0]/torch.sum(weight)
+        return weight*x.shape[0]/(torch.sum(weight)+1e-8)
         # weight = 
         
         # return probs
