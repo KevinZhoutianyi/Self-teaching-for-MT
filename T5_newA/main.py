@@ -318,10 +318,10 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     w_model.eval()
     v_model.eval()
 
-    w_model.reset()
-    w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
-    v_model.reset()
-    v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
+    # w_model.reset()
+    # w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
+    # v_model.reset()
+    # v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
         tot_iter[0] += bs
