@@ -67,7 +67,7 @@ parser.add_argument('--decay', type=float,                      default=1e-3,   
 parser.add_argument('--beta1', type=float,                      default=0,    help='momentum')
 parser.add_argument('--beta2', type=float,                      default=0,    help='momentum')
 parser.add_argument('--warm', type=float,                       default=10,    help='warmup step')
-parser.add_argument('--num_step_lr', type=float,                default=1,    help='warmup step')
+parser.add_argument('--num_step_lr', type=float,                default=10,    help='warmup step')
 parser.add_argument('--decay_lr', type=float,                   default=0.7,    help='warmup step')
 # parser.add_argument('--smoothing', type=float,                  default=0.1,    help='labelsmoothing')
 
@@ -318,14 +318,14 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     w_model.eval()
     v_model.eval()
 
+    w_model.reset()
+    w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
+    v_model.reset()
+    v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
         tot_iter[0] += bs
         
-        w_model.reset()
-        w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
-        v_model.reset()
-        v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
 
         # logging.info(f"GPU mem :{getGPUMem(device)}%")
         train_x = Variable(batch[0], requires_grad=False).to(

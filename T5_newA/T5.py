@@ -94,6 +94,29 @@ class T5(nn.Module):
         
         loss = torch.mean(loss)
         return loss
+    def aug_loss(self, input_ids, input_attn, target_ids, target_logits,target_attn):
+        # output is distribution , input is just category index
+        #targetids are shifted
+        shifted_target_ids = torch.zeros_like(target_ids,device=torch.device('cuda:0')) 
+        shifted_target_ids[:,0,0] = 1
+        shifted_target_ids[:,1:,:] = target_ids[:,:-1,:]
+        out_emb = self.embedding(shifted_target_ids)/self.enc_emb_scale
+        inp_emb = self.embedding(input_ids)/self.enc_emb_scale
+
+        temp = self.model(inputs_embeds = inp_emb, attention_mask = input_attn, decoder_inputs_embeds   = out_emb, decoder_attention_mask = target_attn, return_dict=True)
+        logits = temp.logits
+        loss_ = temp.loss
+        logits = logits[:,:,:32100]
+        # print(torch.max(logits,-1))
+        # print(torch.max(target_logits,-1))
+        target_logits = torch.softmax(target_logits,-1)
+        loss = self._criterion(logits.view(-1,logits.shape[-1]),target_logits.view(-1,logits.shape[-1]))
+ 
+        loss = loss[target_attn.view(-1) != 0]#get rid of padding loss change shape from bs*seqlen -> bs*seqlen(when attn = 1)
+        # print(loss)
+        loss = torch.mean(loss)
+        # print(loss)
+        return loss
 
 
 

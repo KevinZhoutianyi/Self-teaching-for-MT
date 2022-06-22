@@ -72,8 +72,8 @@ def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
     hard_w_logits_onehot = one_hot.scatter_(-1, hard_w_logits.unsqueeze(-1), 1.).float().detach(
     ) + softmax_w_logtis - softmax_w_logtis.detach()  #bug here  w_soft_idx.sum() # TODO:otputid start with 0
     
-    loss_syn = v_model.loss(input_syn_ids, input_syn_attn,
-                            target_ids=hard_w_logits_onehot[:,:,:32100], target_attn=att)  # TODO：forward_decoderinput
+    loss_syn = v_model.aug_loss(input_syn_ids, input_syn_attn,
+                            target_ids=hard_w_logits_onehot[:,:,:32100], target_logits= w_logits[:,:,:32100],target_attn=att)  # TODO：forward_decoderinput
     
     w_model.apply(turnon_dropout)
     #.model.loss only calculate for the loss for the target which attn = 1,
