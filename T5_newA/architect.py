@@ -45,8 +45,8 @@ class Architect(object):
         self.args = args
         self.A = A
         self.param = list(filter(lambda x: x.requires_grad, self.A.parameters()))
-
-        self.optimizer_A = torch.optim.SGD(self.param,  lr=args.A_lr)
+        
+        self.optimizer_A = torch.optim.Adam(self.param,  lr=args.A_lr)
 
         
         self.scheduler_A  =   StepLR(self.optimizer_A, step_size=args.num_step_lr, gamma=args.decay_lr)
