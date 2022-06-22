@@ -402,10 +402,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         if(tot_iter[0] % args.rep_num == 0 and tot_iter[0] != 0):
             logging.info(f"{progress:5.3}%:\t  W_train_loss:{objs_w.avg:^.7f}\tV_train_syn_loss:{objs_v_syn.avg:^.7f}\tV_train_loss:{objs_v_train.avg:^.7f}\t  V_star_val_loss:{objs_v_star_val.avg:^.7f}\t  improvement:{(objs_v_star_val.avg-objs_v_val.avg):^.7f}")
             logging.info(f"{A(input_w, input_w_attn, output_w,output_w_attn)}")
-            save(input_w,'input_w')
-            save(input_w_attn,'input_w_attn')
-            save(output_w,'output_w')
-            save(output_w_attn,'output_w_attn')
+        
             wandb.log({'W_train_loss': objs_w.avg})
             wandb.log({'V_train_syn_loss': objs_v_syn.avg})
             wandb.log({'V_train_loss': objs_v_train.avg})
