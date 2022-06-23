@@ -28,8 +28,6 @@ import string
 from torch.optim.lr_scheduler import LambdaLR
 from os.path import exists
 from torch.optim.lr_scheduler import StepLR
-import torch.multiprocessing
-torch.multiprocessing.set_sharing_strategy('file_system')
 
 # %%
 parser = argparse.ArgumentParser("main")

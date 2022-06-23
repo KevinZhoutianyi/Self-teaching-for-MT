@@ -1,4 +1,5 @@
 cd /tianyi-vol/Self-teaching-for-machine-translation/T5_newA
+ulimit -n 50000
 pip install transformers
 pip install datasets
 pip install sacrebleu==1.5.1
