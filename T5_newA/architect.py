@@ -41,7 +41,7 @@ class Architect(object):
         self.w_model = w_model
 
         self.v_model = v_model
-
+ 
         self.args = args
         self.A = A
         self.param = list(filter(lambda x: x.requires_grad, self.A.parameters()))

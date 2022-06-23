@@ -28,13 +28,15 @@ import string
 from torch.optim.lr_scheduler import LambdaLR
 from os.path import exists
 from torch.optim.lr_scheduler import StepLR
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 # %%
 parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = 10, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 100, help='train data number')
+parser.add_argument('--train_num_points', type=int,             default = 2000, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = 50, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=16,     help='Batch size')
@@ -221,6 +223,8 @@ logging.info('test data loader get')
 
 A = attention_params(args)#half of train regarded as u
 A = A.cuda()
+B = load()[0]
+A.load_state_dict(B)
 
 
 
@@ -447,8 +451,16 @@ torch.save(model_v,'./model/'+now+'model_v.pt')
 
 
 # %%
-l = load()
-d(l[0])
+
+
+# %%
+for (k,v),b in zip(A.named_parameters(),B.values()):
+    print(k)
+    print(torch.sum(abs(b-v)))
+
+# %%
+for x in B.values():
+    print(x)
 
 # %%
 
