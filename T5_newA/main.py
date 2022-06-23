@@ -220,7 +220,7 @@ logging.info('test data loader get')
 # %%
 
 A = attention_params(args)#half of train regarded as u
-# A = A.cuda()
+A = A.cuda()
 # B = load()[0]
 # A.load_state_dict(B)
 
