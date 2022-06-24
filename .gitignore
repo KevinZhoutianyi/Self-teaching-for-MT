@@ -8,7 +8,7 @@ tensorboard/
 model/
 *.pt
 wandb/
-
+*.pptx
 # C extensions
 *.so
 
