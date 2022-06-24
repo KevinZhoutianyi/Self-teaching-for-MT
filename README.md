@@ -8,7 +8,6 @@ W model -> teacher model
 
 V model -> student model
 
-start file: ./T5/main.ipynb
 
 # INSTRUCTION
 - run bash.sh to install the requirements.
