@@ -231,7 +231,7 @@ model_w = T5(criterion=criterion, tokenizer= tokenizer, args = args, name = 'mod
 model_w = model_w.cuda()
 w_optimizer = torch.optim.Adam(model_w.parameters(),  lr= args.w_lr ,  betas=(args.beta1, args.beta2) ,eps=1e-9 )
 # w_optimizer = Adafactor(model_w.parameters(), lr = args.w_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
-scheduler_w  =   StepLR(w_optimizer, step_size=1e10, gamma=args.decay_lr)
+scheduler_w  =   StepLR(w_optimizer, step_size=args.num_step_lr, gamma=args.decay_lr)
 # scheduler_w  = Scheduler(w_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.w_lr)
 
 
@@ -240,7 +240,7 @@ model_v = T5(criterion=criterion_v, tokenizer= tokenizer, args = args, name = 'm
 model_v = model_v.cuda()
 v_optimizer = torch.optim.Adam(model_v.parameters(),  lr= args.v_lr ,  betas=(args.beta1,args.beta2) ,eps=1e-9  )
 # v_optimizer =Adafactor(model_v.parameters(), lr = args.v_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
-scheduler_v  =   StepLR(v_optimizer, step_size=1e10, gamma=args.decay_lr)
+scheduler_v  =   StepLR(v_optimizer, step_size=args.num_step_lr, gamma=args.decay_lr)
 # scheduler_v  = Scheduler(v_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.v_lr)
 
 
@@ -319,7 +319,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     w_model.eval()
     v_model.eval()
 
-    logging.info(f"split size:{split_size}")
+    # logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
         tot_iter[0] += bs
         
@@ -348,7 +348,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             vsize = wsize
 
 
-        output_w[step%wsize]+=1 # noise input
+        # output_w[step%wsize]+=1 # noise input
         if (args.train_A == 1 and epoch>=args.pre_epochs):
             epsilon_w = args.unrolled_w_lr
             epsilon_v  = args.unrolled_v_lr
@@ -404,7 +404,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             with torch.no_grad():
                 temp = A(input_w, input_w_attn, output_w,output_w_attn)
             logging.info(f"weight:{temp}")
-            logging.info(f'noise input weight:{temp[step%wsize]}')
+            # logging.info(f'noise input weight:{temp[step%wsize]}')
             wandb.log({'W_train_loss': objs_w.avg})
             wandb.log({'V_train_syn_loss': objs_v_syn.avg})
             wandb.log({'V_train_loss': objs_v_train.avg})
