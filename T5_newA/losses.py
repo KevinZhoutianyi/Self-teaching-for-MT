@@ -60,7 +60,7 @@ def my_loss2(input_ids, input_attn, target_ids, target_attn, model):
 # define calc_loss_aug
 
 def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
-    # w_model.apply(turnoff_dropout)
+    w_model.apply(turnoff_dropout)
     output_ids = w_model.generate(input_syn_ids, num_beams=1)[:,1:].contiguous()
     att = (output_ids > 0.5).long()
     w_logits = w_model(input_syn_ids, input_syn_attn, target_ids=output_ids, target_attn=att).logits  # TODO,forward_decoderinput
@@ -75,6 +75,6 @@ def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
     loss_syn = v_model.aug_loss(input_syn_ids, input_syn_attn,
                             target_ids=hard_w_logits_onehot[:,:,:32100], target_logits= w_logits[:,:,:32100],target_attn=att)  # TODO：forward_decoderinput
     
-    # w_model.apply(turnon_dropout)
+    w_model.apply(turnon_dropout)
     #.model.loss only calculate for the loss for the target which attn = 1,
     return loss_syn

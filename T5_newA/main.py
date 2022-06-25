@@ -294,7 +294,7 @@ def my_test(_dataloader,model,epoch):
     # del test_dataloaderx,acc,counter,test_dataloaderx_attn,sacrebleu_score,bleu_score,test_dataloadery,test_dataloadery_attn,ls,pre,x_decoded,pred_decoded,label_decoded,pred_str,label_str,pred_list,label_list
     # gc.collect()
     # torch.cuda.empty_cache()
-    model.train()
+    model.eval()
 
         
 
@@ -316,8 +316,8 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     loader_len = len(_dataloader)
     split_size = [wsize, synsize, vsize, Asize]
     bs = args.batch_size
-    w_model.train()
-    v_model.train()
+    w_model.eval()
+    v_model.eval()
 
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
