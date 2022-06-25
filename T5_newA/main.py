@@ -294,7 +294,7 @@ def my_test(_dataloader,model,epoch):
     # del test_dataloaderx,acc,counter,test_dataloaderx_attn,sacrebleu_score,bleu_score,test_dataloadery,test_dataloadery_attn,ls,pre,x_decoded,pred_decoded,label_decoded,pred_str,label_str,pred_list,label_list
     # gc.collect()
     # torch.cuda.empty_cache()
-    model.eval()
+    model.train()
 
         
 
@@ -316,10 +316,10 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     loader_len = len(_dataloader)
     split_size = [wsize, synsize, vsize, Asize]
     bs = args.batch_size
-    w_model.eval()
-    v_model.eval()
+    w_model.train()
+    v_model.train()
 
-    # logging.info(f"split size:{split_size}")
+    logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
         tot_iter[0] += bs
         
@@ -348,7 +348,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             vsize = wsize
 
 
-        # output_w[step%wsize]+=1 # noise input
+        output_w[step%wsize]+=1 # noise input
         if (args.train_A == 1 and epoch>=args.pre_epochs):
             epsilon_w = args.unrolled_w_lr
             epsilon_v  = args.unrolled_v_lr
@@ -404,7 +404,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             with torch.no_grad():
                 temp = A(input_w, input_w_attn, output_w,output_w_attn)
             logging.info(f"weight:{temp}")
-            # logging.info(f'noise input weight:{temp[step%wsize]}')
+            logging.info(f'noise input weight:{temp[step%wsize]}')
             wandb.log({'W_train_loss': objs_w.avg})
             wandb.log({'V_train_syn_loss': objs_v_syn.avg})
             wandb.log({'V_train_loss': objs_v_train.avg})
