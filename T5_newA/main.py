@@ -346,6 +346,12 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             output_v = output_w
             output_v_attn = output_w_attn
             vsize = wsize
+        if(True):
+            input_A_v = input_w
+            input_A_v_attn = input_w_attn
+            output_A_v = output_w
+            output_A_v_attn = output_w_attn
+            Asize = wsize
 
 
         output_w[step%wsize]+=1 # noise input
