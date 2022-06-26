@@ -66,8 +66,8 @@ def tokenize(text_data, tokenizer, max_length, padding = True):
     
     return input_ids, attention_mask
 def get_Dataset(dataset, tokenizer,max_length):
-    train_sentence = [x['de'] for x in dataset]
-    train_target = [x['en'] for x in dataset]
+    train_sentence = [x['en'] for x in dataset]
+    train_target = [x['de'] for x in dataset]
 
   
     model1_input_ids, model1_input_attention_mask = tokenize(train_sentence, tokenizer, max_length = max_length)

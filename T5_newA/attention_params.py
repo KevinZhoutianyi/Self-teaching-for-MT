@@ -40,9 +40,10 @@ class attention_params(torch.nn.Module):# A and B
         encoded_y = self.model_de2en(y,y_attn).last_hidden_state#bs,seqlen,hiddensize
         encoded_y = torch.sum(encoded_y,1)/torch.sum(y_attn,1,keepdim=True)#bs,hiddensize
         weight = self.relu(self.linear1(torch.hstack((encoded_x,encoded_y))))#bs,1
-        weight = torch.squeeze(self.Sigmoid(self.linear2(weight)))#bs,1
+        weight = torch.squeeze(self.Sigmoid(self.linear2(weight)))+0.01#bs,1
         # print(torch.squeeze(weight))
-        return weight*x.shape[0]/(torch.sum(weight)+1e-8)
+        # weight = torch.clamp(weight, min=0.01)
+        return weight*x.shape[0]/(torch.sum(weight))
         # weight = 
         
         # return probs

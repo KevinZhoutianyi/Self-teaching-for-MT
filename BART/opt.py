@@ -29,7 +29,7 @@ class ScheduledOptim():
         return (d_model ** -0.5) * min(n_steps ** (-0.5), n_steps * n_warmup_steps ** (-1.5))
 
 
-    def _update_learning_rate(self):
+    def update_learning_rate(self):
         ''' Learning rate scheduling per step '''
 
         self.n_steps += 1
