@@ -1,77 +1,46 @@
 
-import os
+import torch.nn as nn
 import torch
-import random
+import math
+import torch.nn as nn
+import torch
+import math
+
+from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler, SubsetRandomSampler
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+from datasets import load_dataset,load_metric
+import torch
+import logging
 import numpy as np
-import pandas as pd
-import torch
-from torch.utils.data import TensorDataset
-from torch.utils.data import DataLoader
-from MT_hyperparams import *
+import torch.backends.cudnn as cudnn
+from torch.autograd import Variable
+import sys
+import time
+from transformers.optimization import Adafactor
+import os
+import gc
 
-def tokenize(text_data, tokenizer, max_length, padding = True):
-    
-    encoding = tokenizer(text_data, return_tensors='pt', padding=padding, truncation = True, max_length = max_length)
+class PositionalEncoding(nn.Module):
 
-    input_ids = encoding['input_ids']
-    
-    attention_mask = encoding['attention_mask']
-    
-    return input_ids, attention_mask
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
 
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len,  d_model)
+        pe[:,  0::2] = torch.sin(position * div_term)
+        pe[:,  1::2] = torch.cos(position * div_term)
+        pe = pe.cuda()
+        self.register_buffer('pe', pe)
 
-def seed_torch(seed=0):
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    
-seed_torch(seed_)
-
-def get_train_Dataset(dataset, tokenizer):
-
-    train_sentence = [x['en'] for x in dataset]
-    train_target = [x[target_language] for x in dataset]
-
-  
-    model1_input_ids, model1_input_attention_mask = tokenize(train_sentence, tokenizer, max_length = max_length)
-  
-    model1_target_ids, model1_target_attention_mask = tokenize(train_target, tokenizer, max_length = max_length)
- 
-    train_data = TensorDataset(model1_input_ids, model1_input_attention_mask, model1_target_ids, model1_target_attention_mask)
-   
-    return train_data
-
-
-def get_aux_dataset(dataset, tokenizer):
-    
-    
-    # get the validing data
-    aux_sentence = [x['en'] for x in dataset]
-    aux_target = [x[target_language] for x in dataset]
-
-
-    
-    # tokenize the article using the bart tokenizer
-    model1_input_ids, model1_input_attention_mask = tokenize(aux_sentence, tokenizer, max_length = max_length)
-    # print("Input shape: ")
-    # print(model1_input_ids.shape, model1_input_attention_mask.shape)
-    
-    # tokenize the target using the bart tokenizer
-    model1_target_ids, model1_target_attention_mask = tokenize(aux_target, tokenizer, max_length = max_length)
-    # print("Target shape: ")
-    # print(model1_target_ids.shape, model1_target_attention_mask.shape)    
-
-    ########################################################################################################
-
-
-    # turn to the tensordataset
-    aux_data = TensorDataset(model1_input_ids, model1_input_attention_mask, model1_target_ids, model1_target_attention_mask)
-   
-    return aux_data
-
+    def forward(self, x):
+        """
+        Args:
+            x: [ batch_size,seq_len]
+        """
+        ret =  self.pe[:x[1]]
+        return ret
 class AvgrageMeter(object):
 
     def __init__(self):
@@ -83,30 +52,28 @@ class AvgrageMeter(object):
         self.cnt = 0
 
     def update(self, val, n=1):
-        self.sum += val * n
+        self.sum += val*n #TODO:its just for W
         self.cnt += n
         self.avg = self.sum / self.cnt
-def accuracy(output, target, topk=(1,)):
-    maxk = max(topk)
-    batch_size = target.size(0)
 
-    _, pred = output.topk(maxk, 1, True, True)
-    pred = pred.t()
-    correct = pred.eq(target.view(1, -1).expand_as(pred))
-    correct = correct.contiguous()
-
-    res = []
+def tokenize(text_data, tokenizer, max_length, padding = True):
     
-    for k in topk:
-        correct_k = correct[:k].view(-1).float().sum(0)
-        res.append(correct_k.mul_(100.0/batch_size))
-        
-    return res
+    encoding = tokenizer(text_data, return_tensors='pt', padding=padding, truncation = True, max_length = max_length)
 
+    input_ids = encoding['input_ids']
+    
+    attention_mask = encoding['attention_mask']
+    
+    return input_ids, attention_mask
+def get_Dataset(dataset, tokenizer,max_length):
+    train_sentence = [x['de'] for x in dataset]
+    train_target = [x['en'] for x in dataset]
 
-def unpadding(message):
-    last_char = message[-1]
-    if ord(last_char) < 32:
-        return message.rstrip(last_char)
-    else:
-        return message
+  
+    model1_input_ids, model1_input_attention_mask = tokenize(train_sentence, tokenizer, max_length = max_length)
+  
+    model1_target_ids, model1_target_attention_mask = tokenize(train_target, tokenizer, max_length = max_length)
+ 
+    train_data = TensorDataset(model1_input_ids, model1_input_attention_mask, model1_target_ids, model1_target_attention_mask)
+   
+    return train_data
