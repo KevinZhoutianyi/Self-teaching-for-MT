@@ -48,7 +48,7 @@ parser.add_argument('--num_workers', type=int,                  default=0,      
 # parser.add_argument('--model_name_teacher', type=str,           default='prajjwal1/bert-small',      help='model_name')
 # parser.add_argument('--model_name_student', type=str,           default='prajjwal1/bert-small',      help='model_name')
 # parser.add_argument('--model_name_de2en', type=str,             default='prajjwal1/bert-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='SST2,nonoise',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='SST2,nonoise,withV',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=2500,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                     default=30000,      help='test times for 1 epoch')
 
@@ -323,22 +323,22 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         objs_w_top5.update(prec5.item(), wsize)
 
 
-        # if(epoch>=args.pre_epochs):  
-        #     v_optimizer.zero_grad()
-        #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
-        #     logits,loss = my_loss2(input_v, input_v_attn, output_v,
-        #                      v_model)
-        #     v_loss = (args.traindata_loss_ratio*loss +
-        #             loss_aug*args.syndata_loss_ratio)
-        #     v_loss.backward()
-        #     objs_v_syn.update(loss_aug.item(), synsize)
-        #     objs_v_train.update(loss.item(), vsize)
-        #     v_optimizer.step()
+        if(epoch>=args.pre_epochs):  
+            v_optimizer.zero_grad()
+            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
+            logits,loss = my_loss2(input_v, input_v_attn, output_v,
+                             v_model)
+            v_loss = (args.traindata_loss_ratio*loss +
+                    loss_aug*args.syndata_loss_ratio)
+            v_loss.backward()
+            objs_v_syn.update(loss_aug.item(), synsize)
+            objs_v_train.update(loss.item(), vsize)
+            v_optimizer.step()
         
-        #     torch.nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-        #     prec1, prec5 = accuracy(logits, output_v, topk=(1, 1))
-        #     objs_v_top1.update(prec1.item(), vsize)
-        #     objs_v_top5.update(prec5.item(), vsize)
+            torch.nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+            prec1, prec5 = accuracy(logits, output_v, topk=(1, 1))
+            objs_v_top1.update(prec1.item(), vsize)
+            objs_v_top5.update(prec5.item(), vsize)
                 
         progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
