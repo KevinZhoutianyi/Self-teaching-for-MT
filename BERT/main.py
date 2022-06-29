@@ -298,7 +298,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             vsize = wsize
 
 
-        input_w[step%wsize]+=1 # noise input
+        # input_w[step%wsize]+=1 # noise input
         
         # if (args.train_A == 1 and epoch>=args.pre_epochs):
         #     epsilon_w = args.unrolled_w_lr
@@ -316,29 +316,29 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         loss_w.backward()
         objs_w.update(loss_w.item(), wsize)
         w_optimizer.step()
-        input_w[step%wsize]-=1
+        # input_w[step%wsize]-=1
         torch.nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
         prec1, prec5 = accuracy(logits, output_w, topk=(1, 1))
         objs_w_top1.update(prec1.item(), wsize)
         objs_w_top5.update(prec5.item(), wsize)
 
 
-        if(epoch>=args.pre_epochs):  
-            v_optimizer.zero_grad()
-            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
-            logits,loss = my_loss2(input_v, input_v_attn, output_v,
-                             v_model)
-            v_loss = (args.traindata_loss_ratio*loss +
-                    loss_aug*args.syndata_loss_ratio)
-            v_loss.backward()
-            objs_v_syn.update(loss_aug.item(), synsize)
-            objs_v_train.update(loss.item(), vsize)
-            v_optimizer.step()
+        # if(epoch>=args.pre_epochs):  
+        #     v_optimizer.zero_grad()
+        #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
+        #     logits,loss = my_loss2(input_v, input_v_attn, output_v,
+        #                      v_model)
+        #     v_loss = (args.traindata_loss_ratio*loss +
+        #             loss_aug*args.syndata_loss_ratio)
+        #     v_loss.backward()
+        #     objs_v_syn.update(loss_aug.item(), synsize)
+        #     objs_v_train.update(loss.item(), vsize)
+        #     v_optimizer.step()
         
-            torch.nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-            prec1, prec5 = accuracy(logits, output_v, topk=(1, 1))
-            objs_v_top1.update(prec1.item(), vsize)
-            objs_v_top5.update(prec5.item(), vsize)
+        #     torch.nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+        #     prec1, prec5 = accuracy(logits, output_v, topk=(1, 1))
+        #     objs_v_top1.update(prec1.item(), vsize)
+        #     objs_v_top5.update(prec5.item(), vsize)
                 
         progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):

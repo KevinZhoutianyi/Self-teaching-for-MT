@@ -96,9 +96,6 @@ class Architect(object):
             v_length = np.prod(v.size())
             params[k] = theta[offset: offset+v_length].view(v.size())
             offset += v_length
-        # params['model.encoder.embed_tokens.weight'] = params['model.shared.weight']
-        # params['embedding.embedding.weight'] = params['model.shared.weight']
-        # params['model.decoder.embed_tokens.weight'] = params['model.shared.weight']
         assert offset == len(theta)
         model_dict.update(params)
         w_model_new.load_state_dict(model_dict)
