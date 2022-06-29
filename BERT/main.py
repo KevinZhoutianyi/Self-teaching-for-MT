@@ -48,7 +48,7 @@ parser.add_argument('--num_workers', type=int,                  default=0,      
 # parser.add_argument('--model_name_teacher', type=str,           default='prajjwal1/bert-small',      help='model_name')
 # parser.add_argument('--model_name_student', type=str,           default='prajjwal1/bert-small',      help='model_name')
 # parser.add_argument('--model_name_de2en', type=str,             default='prajjwal1/bert-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='SST2,nonoise,withV',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='SST2,nonoise,withV,withA',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=2500,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                     default=30000,      help='test times for 1 epoch')
 
@@ -300,14 +300,14 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
 
         # input_w[step%wsize]+=1 # noise input
         
-        # if (args.train_A == 1 and epoch>=args.pre_epochs):
-        #     epsilon_w = args.unrolled_w_lr
-        #     epsilon_v  = args.unrolled_v_lr
-        #     v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, w_optimizer,
-        #                                      input_v, input_v_attn, output_v, input_syn, input_syn_attn,
-        #                                      input_A_v, input_A_v_attn, output_A_v, v_optimizer,
-        #                                      epsilon_w, epsilon_v,args.grad_clip)
-        #     objs_v_star_val.update(v_star_val_loss, Asize)
+        if (args.train_A == 1 and epoch>=args.pre_epochs):
+            epsilon_w = args.unrolled_w_lr
+            epsilon_v  = args.unrolled_v_lr
+            v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, w_optimizer,
+                                             input_v, input_v_attn, output_v, input_syn, input_syn_attn,
+                                             input_A_v, input_A_v_attn, output_A_v, v_optimizer,
+                                             epsilon_w, epsilon_v,args.grad_clip)
+            objs_v_star_val.update(v_star_val_loss, Asize)
                    
         w_optimizer.zero_grad()
         logits,loss_w = CTG_loss(input_w, input_w_attn, output_w,
