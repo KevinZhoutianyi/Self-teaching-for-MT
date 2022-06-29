@@ -257,7 +257,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     objs_v_syn = AvgrageMeter()
     objs_v_train = AvgrageMeter()
     objs_v_star_val = AvgrageMeter()
-    objs_v_val = AvgrageMeter()
     objs_w_top1 = AvgrageMeter()
     objs_w_top5 = AvgrageMeter()
     objs_v_top1 = AvgrageMeter()
@@ -315,7 +314,6 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
                           A, w_model)
         w_trainloss_acc += loss_w.item()
         loss_w.backward()
-        # assert False
         objs_w.update(loss_w.item(), wsize)
         w_optimizer.step()
         input_w[step%wsize]-=1
@@ -325,22 +323,22 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         objs_w_top5.update(prec5.item(), wsize)
 
 
-        # if(epoch>=args.pre_epochs):  
-        #     v_optimizer.zero_grad()
-        #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
-        #     logits,loss = my_loss2(input_v, input_v_attn, output_v,
-        #                      v_model)
-        #     v_loss = (args.traindata_loss_ratio*loss +
-        #             loss_aug*args.syndata_loss_ratio)
-        #     v_loss.backward()
-        #     objs_v_syn.update(loss_aug.item(), synsize)
-        #     objs_v_train.update(loss.item(), vsize)
-        #     v_optimizer.step()
+        if(epoch>=args.pre_epochs):  
+            v_optimizer.zero_grad()
+            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
+            logits,loss = my_loss2(input_v, input_v_attn, output_v,
+                             v_model)
+            v_loss = (args.traindata_loss_ratio*loss +
+                    loss_aug*args.syndata_loss_ratio)
+            v_loss.backward()
+            objs_v_syn.update(loss_aug.item(), synsize)
+            objs_v_train.update(loss.item(), vsize)
+            v_optimizer.step()
         
-        #     torch.nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-        #     prec1, prec5 = accuracy(logits, output_v, topk=(1, 1))
-        #     objs_v_top1.update(prec1.item(), vsize)
-        #     objs_v_top5.update(prec5.item(), vsize)
+            torch.nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+            prec1, prec5 = accuracy(logits, output_v, topk=(1, 1))
+            objs_v_top1.update(prec1.item(), vsize)
+            objs_v_top5.update(prec5.item(), vsize)
                 
         progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
@@ -365,12 +363,10 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             wandb.log({'V_train_syn_loss': objs_v_syn.avg})
             wandb.log({'V_train_loss': objs_v_train.avg})
             wandb.log({'V_star_val_loss': objs_v_star_val.avg})
-            wandb.log({'V_val_loss': objs_v_val.avg})
             objs_v_syn.reset()
             objs_v_train.reset()
             objs_w.reset()
             objs_v_star_val.reset()
-            objs_v_val.reset()
             objs_w_top1.reset()
             objs_w_top5.reset()
     return w_trainloss_acc
