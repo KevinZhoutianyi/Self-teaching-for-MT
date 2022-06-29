@@ -34,23 +34,23 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = 10000, help='validation data number')
-parser.add_argument('--train_num_points', type=int,             default = 30000, help='train data number')
+parser.add_argument('--train_num_points', type=int,             default = 10000, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = -1, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=24,     help='Batch size')
+parser.add_argument('--batch_size', type=int,                   default=8,     help='Batch size')
 parser.add_argument('--train_w_num_points', type=int,           default=8,      help='train_w_num_points for each batch')
-parser.add_argument('--train_v_synthetic_num_points', type=int, default=8,      help='train_v_synthetic_num_points for each batch')
+parser.add_argument('--train_v_synthetic_num_points', type=int, default=0,      help='train_v_synthetic_num_points for each batch')
 parser.add_argument('--train_v_num_points', type=int,           default=0,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=8,      help='train_A_num_points decay for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=0,      help='train_A_num_points decay for each batch')
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--num_workers', type=int,                  default=0,      help='num_workers')
 # parser.add_argument('--model_name_teacher', type=str,           default='prajjwal1/bert-small',      help='model_name')
 # parser.add_argument('--model_name_student', type=str,           default='prajjwal1/bert-small',      help='model_name')
 # parser.add_argument('--model_name_de2en', type=str,             default='prajjwal1/bert-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='SST2,nonoise,withV,withA',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='SST2,nonoise.onlyW',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=2500,      help='report times for 1 epoch')
-parser.add_argument('--test_num', type=int,                     default=30000,      help='test times for 1 epoch')
+parser.add_argument('--test_num', type=int,                     default=10000,      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=200,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
@@ -300,14 +300,14 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
 
         # input_w[step%wsize]+=1 # noise input
         
-        if (args.train_A == 1 and epoch>=args.pre_epochs):
-            epsilon_w = args.unrolled_w_lr
-            epsilon_v  = args.unrolled_v_lr
-            v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, w_optimizer,
-                                             input_v, input_v_attn, output_v, input_syn, input_syn_attn,
-                                             input_A_v, input_A_v_attn, output_A_v, v_optimizer,
-                                             epsilon_w, epsilon_v,args.grad_clip)
-            objs_v_star_val.update(v_star_val_loss, Asize)
+        # if (args.train_A == 1 and epoch>=args.pre_epochs):
+        #     epsilon_w = args.unrolled_w_lr
+        #     epsilon_v  = args.unrolled_v_lr
+        #     v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, w_optimizer,
+        #                                      input_v, input_v_attn, output_v, input_syn, input_syn_attn,
+        #                                      input_A_v, input_A_v_attn, output_A_v, v_optimizer,
+        #                                      epsilon_w, epsilon_v,args.grad_clip)
+        #     objs_v_star_val.update(v_star_val_loss, Asize)
                    
         w_optimizer.zero_grad()
         logits,loss_w = CTG_loss(input_w, input_w_attn, output_w,
@@ -323,22 +323,22 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         objs_w_top5.update(prec5.item(), wsize)
 
 
-        if(epoch>=args.pre_epochs):  
-            v_optimizer.zero_grad()
-            loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
-            logits,loss = my_loss2(input_v, input_v_attn, output_v,
-                             v_model)
-            v_loss = (args.traindata_loss_ratio*loss +
-                    loss_aug*args.syndata_loss_ratio)
-            v_loss.backward()
-            objs_v_syn.update(loss_aug.item(), synsize)
-            objs_v_train.update(loss.item(), vsize)
-            v_optimizer.step()
+        # if(epoch>=args.pre_epochs):  
+        #     v_optimizer.zero_grad()
+        #     loss_aug = calc_loss_aug(input_syn, input_syn_attn, w_model, v_model)
+        #     logits,loss = my_loss2(input_v, input_v_attn, output_v,
+        #                      v_model)
+        #     v_loss = (args.traindata_loss_ratio*loss +
+        #             loss_aug*args.syndata_loss_ratio)
+        #     v_loss.backward()
+        #     objs_v_syn.update(loss_aug.item(), synsize)
+        #     objs_v_train.update(loss.item(), vsize)
+        #     v_optimizer.step()
         
-            torch.nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
-            prec1, prec5 = accuracy(logits, output_v, topk=(1, 1))
-            objs_v_top1.update(prec1.item(), vsize)
-            objs_v_top5.update(prec5.item(), vsize)
+        #     torch.nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+        #     prec1, prec5 = accuracy(logits, output_v, topk=(1, 1))
+        #     objs_v_top1.update(prec1.item(), vsize)
+        #     objs_v_top5.update(prec5.item(), vsize)
                 
         progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
