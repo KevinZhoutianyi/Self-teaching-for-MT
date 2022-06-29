@@ -48,7 +48,7 @@ parser.add_argument('--num_workers', type=int,                  default=0,      
 # parser.add_argument('--model_name_teacher', type=str,           default='prajjwal1/bert-small',      help='model_name')
 # parser.add_argument('--model_name_student', type=str,           default='prajjwal1/bert-small',      help='model_name')
 # parser.add_argument('--model_name_de2en', type=str,             default='prajjwal1/bert-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='SST2,sigmoidA',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='SST2,noA',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=2500,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                     default=30000,      help='test times for 1 epoch')
 
@@ -61,7 +61,7 @@ parser.add_argument('--w_lr', type=float,                       default=1e-3,   
 parser.add_argument('--unrolled_w_lr', type=float,              default=1e-3,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=1e-3,   help='learning rate for v')
 parser.add_argument('--unrolled_v_lr', type=float,              default=1e-3,   help='learning rate for v')
-parser.add_argument('--A_lr', type=float,                       default=1e-3,   help='learning rate for A')
+parser.add_argument('--A_lr', type=float,                       default=0,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--beta1', type=float,                      default=0.9,    help='momentum')
