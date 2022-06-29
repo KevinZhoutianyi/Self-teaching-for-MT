@@ -77,7 +77,7 @@ parser.add_argument('--traindata_loss_ratio', type=float,       default=0,    he
 parser.add_argument('--syndata_loss_ratio', type=float,         default=1,    help='augmented dataset ratio')
 
 parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
-parser.add_argument('--train_A', type=int,                      default=1 ,     help='whether train A')
+parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
 
 parser.add_argument('--embedding_dim', type=int,                default=300 ,     help='whether train A')
 parser.add_argument('--out_dim', type=int,                      default=2 ,     help='whether train A')
