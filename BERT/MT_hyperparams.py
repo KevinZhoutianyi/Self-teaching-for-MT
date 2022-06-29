@@ -1,7 +1,7 @@
 # import numpy as np
 # import torch
 
-seed_ = 19
+seed_ = 229
 max_length = 150#150
 
 
