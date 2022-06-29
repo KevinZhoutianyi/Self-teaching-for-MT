@@ -37,7 +37,7 @@ class ClassifierModel(torch.nn.Module):
                  vocab_size,
                 args,
                 name,
-                 dropout=0,#TODO:
+                 dropout=0.5,#TODO:
                  batch_first=True,
                  bidirectional=True
                 ):

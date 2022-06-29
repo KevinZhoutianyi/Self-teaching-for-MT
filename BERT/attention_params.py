@@ -21,8 +21,9 @@ class attention_params(torch.nn.Module):# A and B
         super(attention_params, self).__init__()
         self.model = ClassifierModel(vocab,args,'A').cuda()
         
+        
     def forward(self, x):
         weight = self.model(x)
-        weight = torch.mean(weight,-1)
+        weight = torch.softmax(weight,-1)[:,0]
         weight = torch.clamp(weight, min=0.1,max=0.9)
         return weight*x.shape[0]/(torch.sum(weight))
