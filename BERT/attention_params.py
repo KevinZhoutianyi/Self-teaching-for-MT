@@ -20,10 +20,11 @@ class attention_params(torch.nn.Module):# A and B
     def __init__(self, vocab, args):
         super(attention_params, self).__init__()
         self.model = ClassifierModel(vocab,args,'A').cuda()
+        self.Sigmoid = torch.nn.Sigmoid()
         
         
     def forward(self, x):
         weight = self.model(x)
-        weight = torch.softmax(weight,-1)[:,0]
+        weight = self.Sigmoid(torch.sum(weight,-1))
         weight = torch.clamp(weight, min=0.1,max=0.9)
         return weight*x.shape[0]/(torch.sum(weight))

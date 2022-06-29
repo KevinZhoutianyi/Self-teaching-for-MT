@@ -48,11 +48,11 @@ parser.add_argument('--num_workers', type=int,                  default=0,      
 # parser.add_argument('--model_name_teacher', type=str,           default='prajjwal1/bert-small',      help='model_name')
 # parser.add_argument('--model_name_student', type=str,           default='prajjwal1/bert-small',      help='model_name')
 # parser.add_argument('--model_name_de2en', type=str,             default='prajjwal1/bert-small',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='SST2',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='SST2,sigmoidA',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=2500,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                     default=30000,      help='test times for 1 epoch')
 
-parser.add_argument('--epochs', type=int,                       default=500,     help='num of training epochs')
+parser.add_argument('--epochs', type=int,                       default=200,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
 parser.add_argument('--grad_acc_count', type=float,             default=-1,      help='gradient accumulate steps')
