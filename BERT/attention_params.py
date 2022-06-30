@@ -32,7 +32,7 @@ class attention_params(torch.nn.Module):# A and B
     def __init__(self, tokenizer, args):
         super(attention_params, self).__init__()
         
-        self.act = torch.nn.ReLU()
+        self.act = torch.nn.Sigmoid()
         self.model = torch.load(
             args.model_name_teacher.replace('/', '')+'.pt').roberta.cuda()
         self.embedding = Embedding_(self.model.embeddings.word_embeddings)
