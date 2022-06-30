@@ -37,18 +37,18 @@ parser.add_argument('--valid_num_points', type=int,             default = 10000,
 parser.add_argument('--train_num_points', type=int,             default = 20000, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = -1, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=16,      help='train_w_num_points for each batch')
-parser.add_argument('--train_v_synthetic_num_points', type=int, default=8,      help='train_v_synthetic_num_points for each batch')
+parser.add_argument('--batch_size', type=int,                   default=4,     help='Batch size')
+parser.add_argument('--train_w_num_points', type=int,           default=2,      help='train_w_num_points for each batch')
+parser.add_argument('--train_v_synthetic_num_points', type=int, default=1,      help='train_v_synthetic_num_points for each batch')
 parser.add_argument('--train_v_num_points', type=int,           default=0,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=8,      help='train_A_num_points decay for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=1,      help='train_A_num_points decay for each batch')
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--num_workers', type=int,                  default=0,      help='num_workers')
 parser.add_argument('--model_name_teacher', type=str,           default='roberta-base',      help='model_name')
 parser.add_argument('--model_name_student', type=str,           default='roberta-base',      help='model_name')
 parser.add_argument('--model_name_de2en', type=str,             default='roberta-base',      help='model_name')
-parser.add_argument('--exp_name', type=str,                     default='SST2,noA',      help='experiment name')
+parser.add_argument('--exp_name', type=str,                     default='SST2,withnoise',      help='experiment name')
 parser.add_argument('--rep_num', type=int,                      default=5000,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                     default=20000,      help='test times for 1 epoch')
 
@@ -335,16 +335,16 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             output_v = output_w
             vsize = wsize
 
-        # input_w[step%wsize]+=1 # noise input
+        input_w[step%wsize]+=1 # noise input
 
-        if (args.train_A == 1 and epoch>=args.pre_epochs):
-            epsilon_w = args.unrolled_w_lr
-            epsilon_v  = args.unrolled_v_lr
-            v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, w_optimizer,
-                                             input_v, input_v_attn, output_v, input_syn, input_syn_attn,
-                                             input_A_v, input_A_v_attn, output_A_v, v_optimizer,
-                                             epsilon_w, epsilon_v,args.grad_clip)
-            objs_v_star_val.update(v_star_val_loss, Asize)
+        # if (args.train_A == 1 and epoch>=args.pre_epochs):
+        #     epsilon_w = args.unrolled_w_lr
+        #     epsilon_v  = args.unrolled_v_lr
+        #     v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, w_optimizer,
+        #                                      input_v, input_v_attn, output_v, input_syn, input_syn_attn,
+        #                                      input_A_v, input_A_v_attn, output_A_v, v_optimizer,
+        #                                      epsilon_w, epsilon_v,args.grad_clip)
+        #     objs_v_star_val.update(v_star_val_loss, Asize)
 
         w_optimizer.zero_grad()
         logits, loss_w = CTG_loss(input_w, input_w_attn, output_w,
@@ -354,7 +354,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         objs_w.update(loss_w.item(), wsize)
         w_optimizer.step()
 
-        # input_w[step%wsize]-=1
+        input_w[step%wsize]-=1
         
         torch.nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
         prec1, prec5 = accuracy(logits, output_w, topk=(1, 1))
