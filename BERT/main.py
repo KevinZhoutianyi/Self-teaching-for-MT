@@ -335,7 +335,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             output_v = output_w
             vsize = wsize
 
-        input_w[step%wsize]+=1 # noise input
+        # input_w[step%wsize]+=1 # noise input
 
         if (args.train_A == 1 and epoch>=args.pre_epochs):
             epsilon_w = args.unrolled_w_lr
@@ -354,7 +354,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         objs_w.update(loss_w.item(), wsize)
         w_optimizer.step()
 
-        input_w[step%wsize]-=1
+        # input_w[step%wsize]-=1
         
         torch.nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
         prec1, prec5 = accuracy(logits, output_w, topk=(1, 1))
