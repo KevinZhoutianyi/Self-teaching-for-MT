@@ -25,6 +25,6 @@ class attention_params(torch.nn.Module):# A and B
         
     def forward(self, x, attn):
         weight = self.model(x,attn)
-        weight = self.Sigmoid(torch.sum(weight,-1))
+        weight = self.Sigmoid(weight[:,0])
         weight = torch.clamp(weight, min=0.1,max=0.9)
         return weight*x.shape[0]/(torch.sum(weight))
