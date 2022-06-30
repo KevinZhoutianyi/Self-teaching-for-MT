@@ -1,10 +1,16 @@
+from cProfile import label
 import os
 import random
-import torch
 import numpy as np
-import torch.autograd
-from torch.autograd import Variable
+import gc
+import copy
+from transformers import T5ForConditionalGeneration
+from transformers import T5Tokenizer
+import torch
+import torch.nn as nn
 import torch.nn.functional as F
+from MT_hyperparams import *
+import logging
 
 
 def seed_torch(seed=0):
@@ -14,101 +20,62 @@ def seed_torch(seed=0):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
-    
-seed_torch(9)
+
+
+seed_torch(seed_)
+
 
 class Embedding_(torch.nn.Module):
-    def __init__(self, vocab_size, embedding_dim):
+    def __init__(self, embedding_layer):
         super(Embedding_, self).__init__()
-        
-        self.embedding = torch.nn.Embedding(vocab_size, embedding_dim).cuda()
+        self.embedding = embedding_layer.cuda()
+        # https://github.com/huggingface/transformers/issues/4875
 
     def forward(self, mask):
         if mask.ndim == 2:
             assert mask.dtype == torch.long
             return self.embedding(mask)
-        
+
         assert mask.dtype == torch.float
-        # here the mask is the one-hot encoding
         return torch.matmul(mask, self.embedding.weight)
 
-class ClassifierModel(torch.nn.Module):
-    def __init__(self, 
-                 vocab_size,
-                args,
-                name,
-                 dropout=0.5,#TODO:
-                 batch_first=True,
-                 bidirectional=True
-                ):
-        super(ClassifierModel, self).__init__()
 
-        # hyper parameters
-        self.args = args
+class Model(nn.Module):
+
+    def __init__(self, tokenizer, args, name='unknown'):
+        super(Model, self).__init__()
         self.name = name
-        self.vocab_size =vocab_size
-        self.embedding_dim = args.embedding_dim
-        self.out_dim = args.out_dim
-        self.hidden_size = args.hidden_size
-        self.dropout = dropout
-        
-        # model functions
-        # architecture same as EDA LSTM
-        self.embedding = Embedding_(vocab_size, self.embedding_dim).requires_grad_()
-        self.dropout_layer = torch.nn.Dropout(self.dropout)
-        self.lstm1 = torch.nn.LSTM(self.embedding_dim, self.hidden_size, batch_first=batch_first, bidirectional=bidirectional).requires_grad_()
-        self.lstm2 = torch.nn.LSTM(128, 32, batch_first=batch_first, bidirectional=bidirectional).requires_grad_()
-        self.dense1 = torch.nn.Linear(64, 20).requires_grad_()
-        self.dense2 = torch.nn.Linear(20, self.out_dim).requires_grad_()
-        self.relu = torch.nn.ReLU(True)
-        
+        self.tokenizer = tokenizer
+        self.vocab_size = tokenizer.vocab_size
+        self.name = name
         self.loss_fn = torch.nn.CrossEntropyLoss(reduction='none')
+        self.args = args
+        self.model = torch.load(
+            args.model_name_teacher.replace('/', '')+'.pt').roberta.cuda()
+        if(name == 'student' or name == 'student*'):
+            self.model = torch.load(
+                args.model_name_student.replace('/', '')+'.pt').roberta.cuda()
+        self.embedding = Embedding_(self.model.embeddings.word_embeddings).requires_grad_()
+        self.linear = nn.Linear(self.model.config.hidden_size,args.out_dim).requires_grad_()
 
-    def forward(self, x):
-        # get embedding
-        embedding_out = self.embedding(x)
-        # print('embedding_out',embedding_out)
-        # get the first hidden layer weights
-        h_lstm1, _ = self.lstm1(embedding_out)
-        
-        # print('h_lstm1',h_lstm1)
-        # get the dropout from 1st hiddenlayer
-        h_lstm1 = self.dropout_layer(h_lstm1)
-        
-        # print('h_lstm1',h_lstm1)
-        # get the second hidden layer weights        
-        h_lstm2, _ = self.lstm2(h_lstm1)
-        
-        # print('h_lstm2',h_lstm2)
-        # get the dropout from 2nd hiddenlayer        
-        h_lstm2 = self.dropout_layer(h_lstm2)
-        
-        # print('h_lstm2',h_lstm2)
-        # get the last layer output for classification
-        lstm2_hidden = h_lstm2[:, -1, :]
-        # print('lstm2_hidden',lstm2_hidden)
-        
-        # find the dense 
-        dense_hidden = self.relu(self.dense1(lstm2_hidden))
-        # print('dense_hidden',dense_hidden)
-        
-        out = self.dense2(dense_hidden)
-        # print('out',out)
-        
+    def forward(self, input_ids, input_attn):
+
+        inp_emb = self.embedding(input_ids)
+        last_hidden_state = self.model(inputs_embeds=inp_emb, attention_mask=input_attn).last_hidden_state[:,0,:]
+        out = self.linear(last_hidden_state)
         return out
 
-    def get_loss_vec(self, x, target):
-        # print(x,target)
-        logits = self(x)
-        # print(logits)
-        # print(self.loss_fn(logits, target),'\n\n')
-        # print(logits,target)
-        return  logits,self.loss_fn(logits, target)
+    def get_loss_vec(self, input_ids, input_attn, target):
+        logits = self(input_ids,input_attn)
+        loss_vec = self.loss_fn(logits,target)
+        return logits,loss_vec
 
+    def new(self, name='unknown'):
 
-    # new model for the definitions of gradients in architec.py 
-    def new(self):
+        model_new = Model( self.tokenizer,
+                       args=self.args, name=name).cuda()
 
-        model_new = ClassifierModel(self.vocab_size, self.args,self.name).cuda()
+        model_new.model.load_state_dict(self.model.state_dict())
 
         return model_new
+

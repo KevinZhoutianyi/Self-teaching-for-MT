@@ -28,10 +28,10 @@ tokenizer = T5Tokenizer.from_pretrained("t5-small")
 
 def CTG_loss(input_ids, input_attn, target_ids, attention_parameters, model):
 
-    attention_weights = attention_parameters(input_ids,input_attn)
+    attention_weights = attention_parameters(input_ids)
     # logging.info(f"attentionweight:{attention_weights}")
     logits,loss_vec = model.get_loss_vec(
-        input_ids,input_attn, target_ids)
+        input_ids, target_ids)
     loss = torch.dot(attention_weights, loss_vec)/input_ids.shape[0]
 
     return logits,loss
@@ -42,7 +42,7 @@ def my_loss(input_ids, input_attn, target_ids, model):
 
     with torch.no_grad():
         logits,loss_vec = model.get_loss_vec(
-        input_ids,input_attn, target_ids)
+            input_ids, target_ids)
         loss = torch.mean(loss_vec)
     return logits,loss
 
@@ -50,7 +50,7 @@ def my_loss(input_ids, input_attn, target_ids, model):
 def my_loss2(input_ids, input_attn, target_ids, model):
 
     logits,loss_vec = model.get_loss_vec(
-        input_ids,input_attn, target_ids)
+        input_ids, target_ids)
     loss = torch.mean(loss_vec)
 
     return logits,loss
@@ -60,11 +60,10 @@ def my_loss2(input_ids, input_attn, target_ids, model):
 # define calc_loss_aug
 
 def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
-    w_model.eval()
-    output_ids = w_model(input_syn_ids,input_syn_attn)
-    w_model.train()
+    # w_model.apply(turnoff_dropout)
+    output_ids = w_model(input_syn_ids)
     output_ids = torch.softmax(output_ids,-1)
-    loss_syn = torch.mean(v_model.get_loss_vec(input_syn_ids, input_syn_attn,output_ids)[1])
+    loss_syn = torch.mean(v_model.get_loss_vec(input_syn_ids,output_ids)[1])
     
     # w_model.apply(turnon_dropout)
     #.model.loss only calculate for the loss for the target which attn = 1,
