@@ -32,12 +32,13 @@ class attention_params(torch.nn.Module):# A and B
     def __init__(self, tokenizer, args):
         super(attention_params, self).__init__()
         
-        self.Sigmoid = torch.nn.Sigmoid()
+        self.act = torch.nn.ReLU()
         self.model = torch.load(
             args.model_name_teacher.replace('/', '')+'.pt').roberta.cuda()
         self.embedding = Embedding_(self.model.embeddings.word_embeddings)
         self.embedding.requires_grad_ = False
         self.linear = torch.nn.Linear(self.model.config.hidden_size,1).requires_grad_()
+        torch.nn.init.xavier_uniform(self.linear.weight)
         
         
     def forward(self, x, attn):
@@ -46,6 +47,6 @@ class attention_params(torch.nn.Module):# A and B
         inp_emb = self.embedding(x)
         last_hidden_state = self.model(inputs_embeds=inp_emb, attention_mask=attn).last_hidden_state[:,0,:]
         out = self.linear(last_hidden_state)
-        weight = self.Sigmoid(out)
+        weight = torch.squeeze(self.act(out))
         weight = torch.clamp(weight, min=0.1,max=0.9)
         return weight*x.shape[0]/(torch.sum(weight))

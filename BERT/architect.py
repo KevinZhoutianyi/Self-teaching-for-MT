@@ -200,24 +200,24 @@ class Architect(object):
 
     def _hessian_vector_product_A(self, vector, input, target, input_attn,    r=1e-2):
         R = r / _concat(vector).norm()
-        # for p, v in zip(self.w_model.parameters(), vector):
+        for p, v in zip(self.w_model.parameters(), vector):
         
-        #     p.data = p.data.add(R, v)
+            p.data = p.data.add(R, v)
         _,loss = CTG_loss(input, input_attn, target, 
                            self.A, self.w_model)
 
         # change to ctg dataset importance
         grads_p = torch.autograd.grad(loss, self.param)
-        # for p, v in zip(self.w_model.parameters(), vector):
-        #     p.data = p.data.sub(2*R, v)
+        for p, v in zip(self.w_model.parameters(), vector):
+            p.data = p.data.sub(2*R, v)
         _,loss = CTG_loss(input, input_attn, target,
                            self.A, self.w_model)
 
         # change to ctg dataset importance
         # change to .parameters()
         grads_n = torch.autograd.grad(loss, self.param)
-        # for p, v in zip(self.w_model.parameters(), vector):
-        #     p.data = p.data.add(R, v)
+        for p, v in zip(self.w_model.parameters(), vector):
+            p.data = p.data.add(R, v)
         return [(x-y).div_(2*R) for x, y in zip(grads_p, grads_n)]
 
     ######################################################################
