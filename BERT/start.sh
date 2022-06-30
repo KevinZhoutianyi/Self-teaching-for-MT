@@ -1,1 +1,1 @@
-python main.py --A_lr 2e-6 ----batch_size 32 --train_w_num_points 16 --train_v_synthetic_num_points 8 --train_A_num_points 8
+python main.py --A_lr 2e-6 --batch_size 32 --train_w_num_points 16 --train_v_synthetic_num_points 8 --train_A_num_points 8
