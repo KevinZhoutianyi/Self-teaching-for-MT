@@ -15,16 +15,36 @@ def seed_torch(seed=0):
     torch.backends.cudnn.deterministic = True
     
 seed_torch(seed_)
+class Embedding_(torch.nn.Module):
+    def __init__(self, embedding_layer):
+        super(Embedding_, self).__init__()
+        self.embedding = embedding_layer.cuda()
+        # https://github.com/huggingface/transformers/issues/4875
 
+    def forward(self, mask):
+        if mask.ndim == 2:
+            assert mask.dtype == torch.long
+            return self.embedding(mask)
+
+        assert mask.dtype == torch.float
+        return torch.matmul(mask, self.embedding.weight)
 class attention_params(torch.nn.Module):# A and B
     def __init__(self, tokenizer, args):
         super(attention_params, self).__init__()
-        self.model = Model(tokenizer,args,'A').cuda()
-        self.Sigmoid = torch.nn.Sigmoid()
+        
+        self.model = torch.load(
+            args.model_name_teacher.replace('/', '')+'.pt').roberta.cuda()
+        self.embedding = Embedding_(self.model.embeddings.word_embeddings)
+        self.embedding.requires_grad_ = False
+        self.linear = torch.nn.Linear(self.model.config.hidden_size,1).requires_grad_()
         
         
     def forward(self, x, attn):
-        weight = self.model(x,attn)
-        weight = self.Sigmoid(weight[:,0])
+
+        
+        inp_emb = self.embedding(x)
+        last_hidden_state = self.model(inputs_embeds=inp_emb, attention_mask=attn).last_hidden_state[:,0,:]
+        out = self.linear(last_hidden_state)
+        weight = self.Sigmoid(out)
         weight = torch.clamp(weight, min=0.1,max=0.9)
         return weight*x.shape[0]/(torch.sum(weight))
