@@ -37,11 +37,11 @@ parser.add_argument('--valid_num_points', type=int,             default = 10000,
 parser.add_argument('--train_num_points', type=int,             default = 20000, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = -1, help='train data number')
 
-parser.add_argument('--batch_size', type=int,                   default=4,     help='Batch size')
-parser.add_argument('--train_w_num_points', type=int,           default=2,      help='train_w_num_points for each batch')
-parser.add_argument('--train_v_synthetic_num_points', type=int, default=1,      help='train_v_synthetic_num_points for each batch')
+parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size')
+parser.add_argument('--train_w_num_points', type=int,           default=16,      help='train_w_num_points for each batch')
+parser.add_argument('--train_v_synthetic_num_points', type=int, default=8,      help='train_v_synthetic_num_points for each batch')
 parser.add_argument('--train_v_num_points', type=int,           default=0,      help='train_v_num_points for each batch')
-parser.add_argument('--train_A_num_points', type=int,           default=1,      help='train_A_num_points decay for each batch')
+parser.add_argument('--train_A_num_points', type=int,           default=8,      help='train_A_num_points decay for each batch')
 
 parser.add_argument('--gpu', type=int,                          default=0,      help='gpu device id')
 parser.add_argument('--num_workers', type=int,                  default=0,      help='num_workers')
@@ -49,7 +49,7 @@ parser.add_argument('--model_name_teacher', type=str,           default='roberta
 parser.add_argument('--model_name_student', type=str,           default='roberta-base',      help='model_name')
 parser.add_argument('--model_name_de2en', type=str,             default='roberta-base',      help='model_name')
 parser.add_argument('--exp_name', type=str,                     default='SST2,withnoise',      help='experiment name')
-parser.add_argument('--rep_num', type=int,                      default=5000,      help='report times for 1 epoch')
+parser.add_argument('--rep_num', type=int,                      default=1000,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                     default=20000,      help='test times for 1 epoch')
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
@@ -61,7 +61,7 @@ parser.add_argument('--w_lr', type=float,                       default=2e-6,   
 parser.add_argument('--unrolled_w_lr', type=float,              default=2e-6,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=2e-6,   help='learning rate for v')
 parser.add_argument('--unrolled_v_lr', type=float,              default=2e-6,   help='learning rate for v')
-parser.add_argument('--A_lr', type=float,                       default=1e-2,   help='learning rate for A')
+parser.add_argument('--A_lr', type=float,                       default=1e-3,   help='learning rate for A')
 parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--beta1', type=float,                      default=0.9,    help='momentum')
@@ -71,7 +71,7 @@ parser.add_argument('--num_step_lr', type=float,                default=10,    h
 parser.add_argument('--decay_lr', type=float,                   default=1,    help='warmup step')
 # parser.add_argument('--smoothing', type=float,                  default=0.1,    help='labelsmoothing')
 
-parser.add_argument('--freeze', type=int,                       default=1,    help='whether freeze the pretrained encoder')
+parser.add_argument('--freeze', type=int,                       default=0,    help='whether freeze the pretrained encoder')
 
 parser.add_argument('--traindata_loss_ratio', type=float,       default=0.7,    help='human translated data ratio')
 parser.add_argument('--syndata_loss_ratio', type=float,         default=0.3,    help='augmented dataset ratio')
@@ -329,7 +329,8 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
          input_A_v_attn) = torch.split(train_x_attn, split_size)
         (output_w, _, output_v, output_A_v) = torch.split(train_y, split_size)
 
-        input_w[step%wsize]+=1 # noise input
+        input_w[0:8]+=1 #attack
+        output_w[0:8]= 1-output_w[0:8] #attack
         if(True):  # let v train on syn data and w data
             input_v = input_w
             input_v_attn = input_w_attn
@@ -378,8 +379,8 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             objs_v_top1.update(prec1.item(), vsize)
             objs_v_top5.update(prec5.item(), vsize)
 
-        input_w[step%wsize]-=1
-
+        input_w[0:8]-=1 #attack
+        output_w[0:8]= 1-output_w[0:8] #attack
 
 
         progress = 100*(step)/(loader_len-1)
@@ -404,7 +405,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             with torch.no_grad():
                 temp = A(input_w, input_w_attn)
             logging.info(f"weight:{temp}")
-            logging.info(f'noise input weight:{temp[step%wsize]}')
+            logging.info(f'noise:{torch.mean(temp[0:8])} mean:{torch.mean(temp)} max: {torch.max(temp)} min: {torch.min(temp)}')
             wandb.log({'W_train_loss': objs_w.avg})
             wandb.log({'V_train_syn_loss': objs_v_syn.avg})
             wandb.log({'V_train_loss': objs_v_train.avg})
@@ -450,6 +451,13 @@ torch.save(model_v, './model/'+now+'model_v.pt')
 
 
 # %%
+pretrained
 
+# %%
+
+modelname = args.model_name_teacher
+pretrained = AutoModelForMaskedLM.from_pretrained(modelname)
+for k,v in pretrained.named_parameters():
+    print(k,v)
 
 
