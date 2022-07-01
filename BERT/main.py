@@ -330,7 +330,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
         (output_w, _, output_v, output_A_v) = torch.split(train_y, split_size)
 
         input_w[:]+=1 #attack
-        output_w[:]= 1-output_w[0:8] #attack
+        output_w[:]= 1-output_w[:] #attack
         if(True):  # let v train on syn data and w data
             input_v = input_w
             input_v_attn = input_w_attn
