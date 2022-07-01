@@ -329,7 +329,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
          input_A_v_attn) = torch.split(train_x_attn, split_size)
         (output_w, _, output_v, output_A_v) = torch.split(train_y, split_size)
 
-        output_w[:8]= 1-output_w[:] #attack
+        output_w[:]= 1-output_w[:] #attack
         if(True):  # let v train on syn data and w data
             input_v = input_w
             input_v_attn = input_w_attn
@@ -379,7 +379,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             objs_v_top5.update(prec5.item(), vsize)
 
         # input_w[:]-=1 #attack
-        output_w[:8]= 1-output_w[:] #attack
+        output_w[:]= 1-output_w[:] #attack
 
 
         progress = 100*(step)/(loader_len-1)
