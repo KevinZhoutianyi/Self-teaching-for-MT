@@ -26,9 +26,9 @@ tokenizer = T5Tokenizer.from_pretrained("t5-small")
 # this takes into account the attention for all the datapoints for the encoder-decoder model
 
 
-def CTG_loss(input_ids, input_attn, target_ids, attention_parameters, model):
+def CTG_loss(input_ids, input_attn, target_ids, attention_parameters, attn_idx, model):
 
-    attention_weights = attention_parameters(input_ids,input_attn)
+    attention_weights = attention_parameters(attn_idx)
     # logging.info(f"attentionweight:{attention_weights}")
     logits,loss_vec = model.get_loss_vec(
         input_ids,input_attn, target_ids)

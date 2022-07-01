@@ -53,6 +53,27 @@ def get_data(dataset, tokenizer):
     
     return train_data
     
+def get_data_idx(dataset, tokenizer, wdatalen):
+    print('get train data start')
+    batch = dataset['sentence']
+    labels = torch.tensor(dataset['label'])
+
+  
+    attn_idx = torch.arange(wdatalen)
+    encoding = tokenizer(batch, return_tensors='pt', padding=True, truncation = True, max_length=max_length)  
+   
+    
+    input_ids = encoding['input_ids']
+    attention_mask = encoding['attention_mask']
+    
+    # print the shapes
+    print("Input shape: ")
+    print(input_ids.shape, attention_mask.shape,labels.shape)
+    
+    # turn to the tensordataset
+    train_data = TensorDataset(input_ids, attention_mask, labels, attn_idx)
+    
+    return train_data
 def accuracy(output, target, topk=(1,)):
     maxk = max(topk)
     batch_size = target.size(0)

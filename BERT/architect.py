@@ -54,10 +54,10 @@ class Architect(object):
     #########################################################################################
     # Computation of G' model named as unrolled model
 
-    def _compute_unrolled_w_model(self, input, target, input_attn,    eta_w, w_optimizer):
+    def _compute_unrolled_w_model(self, input, target, input_attn,  attn_idx,  eta_w, w_optimizer):
         # BART loss
         _,loss = CTG_loss(input, input_attn, target, 
-                           self.A, self.w_model)
+                           self.A, attn_idx,self.w_model)
         # Unrolled model
 #https://github.com/pytorch/pytorch/blob/master/torch/optim/adam.py,https://pytorch.org/docs/stable/generated/torch.optim.Adam.html
 
@@ -162,11 +162,11 @@ class Architect(object):
 
     def step(self, input_w,  output_w, input_w_attn, w_optimizer,
                                              input_v, input_v_attn, output_v, input_syn, input_syn_attn,
-                                             input_A_v, input_A_v_attn, output_A_v, v_optimizer,
+                                             input_A_v, input_A_v_attn, output_A_v, attn_idx,v_optimizer,
                                              lr_w, lr_v,clip):
              
         unrolled_w_model = self._compute_unrolled_w_model(
-            input_w, output_w, input_w_attn,    lr_w, w_optimizer)
+            input_w, output_w, input_w_attn, attn_idx,   lr_w, w_optimizer)
         unrolled_w_model.train() 
         torch.nn.utils.clip_grad_norm(unrolled_w_model.parameters(), clip)
 
@@ -183,7 +183,7 @@ class Architect(object):
         vector_s_dash = [v.grad.data for v in unrolled_v_model.parameters()]
 
         implicit_grads_A = self._outer_A(vector_s_dash, input_w, output_w, input_w_attn,
-                                         input_v, input_v_attn,    unrolled_w_model, lr_w, lr_v)
+                                         input_v, input_v_attn,  attn_idx,  unrolled_w_model, lr_w, lr_v)
         self.optimizer_A.zero_grad()
         for v, g in zip(self.param, implicit_grads_A):
             if v.grad is None:
@@ -198,20 +198,20 @@ class Architect(object):
         gc.collect()
         return unrolled_v_loss.item()
 
-    def _hessian_vector_product_A(self, vector, input, target, input_attn,    r=1e-2):
+    def _hessian_vector_product_A(self, vector, input, target, input_attn,  attn_idx,  r=1e-2):
         R = r / _concat(vector).norm()
         for p, v in zip(self.w_model.parameters(), vector):
         
             p.data = p.data.add(R, v)
         _,loss = CTG_loss(input, input_attn, target, 
-                           self.A, self.w_model)
+                           self.A,attn_idx, self.w_model)
 
         # change to ctg dataset importance
         grads_p = torch.autograd.grad(loss, self.param)
         for p, v in zip(self.w_model.parameters(), vector):
             p.data = p.data.sub(2*R, v)
         _,loss = CTG_loss(input, input_attn, target,
-                           self.A, self.w_model)
+                           self.A, attn_idx,self.w_model)
 
         # change to ctg dataset importance
         # change to .parameters()
@@ -224,7 +224,7 @@ class Architect(object):
     # function for the product of hessians and the vector product wrt T and function for the product of
     # hessians and the vector product wrt G
 
-    def _outer_A(self, vector_s_dash, w_input, w_target, w_input_attn, input_v, input_v_attn,    unrolled_w_model, eta_w, eta_v, r=1e-2):
+    def _outer_A(self, vector_s_dash, w_input, w_target, w_input_attn, input_v, input_v_attn,  attn_idx,  unrolled_w_model, eta_w, eta_v, r=1e-2):
         # first finite difference method
         R1 = r / _concat(vector_s_dash).norm()
         for p, v in zip(self.v_model.parameters(), vector_s_dash):
@@ -235,7 +235,7 @@ class Architect(object):
         vector_dash = torch.autograd.grad(
             loss_aug_p, unrolled_w_model.parameters(), retain_graph=True)
         grad_part1 = self._hessian_vector_product_A(
-            vector_dash, w_input, w_target, w_input_attn)
+            vector_dash, w_input, w_target, w_input_attn,attn_idx)
 
         # minus S
         for p, v in zip(self.v_model.parameters(), vector_s_dash):
@@ -248,7 +248,7 @@ class Architect(object):
             loss_aug_m, unrolled_w_model.parameters(), retain_graph=True)
 
         grad_part2 = self._hessian_vector_product_A(
-            vector_dash, w_input, w_target, w_input_attn)
+            vector_dash, w_input, w_target, w_input_attn,attn_idx)
 
         for p, v in zip(self.v_model.parameters(), vector_s_dash):
             p.data = p.data.add(R1, v)
