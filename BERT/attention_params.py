@@ -40,19 +40,25 @@ class attention_params(torch.nn.Module):# A and B
             k.requires_grad=(args.freeze==0)
         self.embedding = Embedding_(self.model.embeddings.word_embeddings)
         self.embedding.requires_grad_ = False
-        self.linear = torch.nn.Linear(self.model.config.hidden_size,1).requires_grad_()
-        torch.nn.init.xavier_uniform(self.linear.weight)
+        self.linear1 = torch.nn.Linear(self.model.config.hidden_size,self.model.config.hidden_size//2).requires_grad_()
+        self.linear2 = torch.nn.Linear(self.model.config.hidden_size//2,1).requires_grad_()
+        self.relu = torch.nn.ReLU()
+        self.Sigmoid = torch.nn.Sigmoid()
         
         
     def forward(self, x, attn):
 
         
         inp_emb = self.embedding(x)
-        last_hidden_state = self.model(inputs_embeds=inp_emb, attention_mask=attn).last_hidden_state[:,0,:]
-        out = self.linear(last_hidden_state)
+        last_hidden_state = self.model(inputs_embeds=inp_emb, attention_mask=attn).last_hidden_state
+        weight = torch.sum(last_hidden_state,1)/torch.sum(attn,1,keepdim=True)
+        weight = self.relu(self.linear1(weight))#bs,1
+        weight = torch.squeeze(self.Sigmoid(self.linear2(weight)))#bs,1
+        weight = torch.clamp(weight, min=0.1,max=0.9)
+        return weight*x.shape[0]/(torch.sum(weight))
         # print(out)
-        weight = torch.squeeze(self.act(out))+0.0001
+        # weight = torch.squeeze(self.act(out))+0.0001
         # print(weight)
         # print(weight*x.shape[0]/(torch.sum(weight)))
         # weight = torch.clamp(weight, min=0.1,max=0.9)
-        return weight#*x.shape[0]/(torch.sum(weight))
+        # return weight#*x.shape[0]/(torch.sum(weight))
