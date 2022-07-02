@@ -284,7 +284,7 @@ def my_test(_dataloader,model,epoch):
     objs_top5.reset()
     logging.info('%s test loss : %f',model.name,acc/(counter))
     wandb.log({'test_loss'+model.name: acc/counter})
-    model.train()
+    model.eval()
     return acc
 
         
@@ -310,8 +310,8 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
     loader_len = len(_dataloader)
     split_size = [wsize, synsize, vsize, Asize]
     bs = args.batch_size
-    w_model.train()
-    v_model.train()
+    w_model.eval()
+    v_model.eval()
 
     logging.info(f"split size:{split_size}")
     for step, batch in enumerate(_dataloader):
