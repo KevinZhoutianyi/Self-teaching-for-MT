@@ -73,8 +73,8 @@ parser.add_argument('--decay_lr', type=float,                   default=1,    he
 
 parser.add_argument('--freeze', type=int,                       default=0,    help='whether freeze the pretrained encoder')
 
-parser.add_argument('--traindata_loss_ratio', type=float,       default=0.7,    help='human translated data ratio')
-parser.add_argument('--syndata_loss_ratio', type=float,         default=0.3,    help='augmented dataset ratio')
+parser.add_argument('--traindata_loss_ratio', type=float,       default=0,    help='human translated data ratio')
+parser.add_argument('--syndata_loss_ratio', type=float,         default=1,    help='augmented dataset ratio')
 
 parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
 parser.add_argument('--train_A', type=int,                      default=1 ,     help='whether train A')
@@ -329,7 +329,7 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
          input_A_v_attn) = torch.split(train_x_attn, split_size)
         (output_w, _, output_v, output_A_v) = torch.split(train_y, split_size)
 
-        output_w[:8]= 1-output_w[:8] #attack
+        output_w[:]= 1-output_w[:] #attack
         if(True):  # let v train on syn data and w data
             input_v = input_w
             input_v_attn = input_w_attn
@@ -379,13 +379,15 @@ def my_train(epoch, _dataloader, validdataloader, w_model, v_model, architect, A
             objs_v_top5.update(prec5.item(), vsize)
 
         # input_w[:]-=1 #attack
-        output_w[:8]= 1-output_w[:8] #attack
+        output_w[:]= 1-output_w[:] #attack
 
 
         progress = 100*(step)/(loader_len-1)
         if(tot_iter[0] % args.test_num == 0 and tot_iter[0] != 0):
             w_accu = my_test(validdataloader, model_w, epoch)
             v_accu = my_test(validdataloader, model_v, epoch)
+            wandb.log({'W_test_accuracy': w_accu})
+            wandb.log({'v_test_accuracy':v_accu})
             if(v_accu>past_v_accu):
                 past_v_accu = v_accu
                 logging.info('find a better model')
