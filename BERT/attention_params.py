@@ -55,4 +55,4 @@ class attention_params(torch.nn.Module):# A and B
         # print(weight)
         # print(weight*x.shape[0]/(torch.sum(weight)))
         # weight = torch.clamp(weight, min=0.1,max=0.9)
-        return weight*x.shape[0]/(torch.sum(weight))
+        return weight#*x.shape[0]/(torch.sum(weight))
