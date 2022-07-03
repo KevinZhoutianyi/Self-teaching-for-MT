@@ -59,6 +59,6 @@ class attention_params(torch.nn.Module):
         
     def forward(self, idx):
         
-        probs = self.softmax(self.alpha)
+        probs =self.alpha
         
         return probs[idx]

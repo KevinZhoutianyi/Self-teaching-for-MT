@@ -46,7 +46,7 @@ class Architect(object):
         self.A = A
         self.param = list(filter(lambda x: x.requires_grad, self.A.parameters()))
         
-        self.optimizer_A = torch.optim.Adam(self.param,  lr=args.A_lr)
+        self.optimizer_A = torch.optim.SparseAdam(self.param,  lr=args.A_lr)
 
         
         self.scheduler_A  =   StepLR(self.optimizer_A, step_size=args.num_step_lr, gamma=args.decay_lr)
@@ -184,13 +184,14 @@ class Architect(object):
 
         implicit_grads_A = self._outer_A(vector_s_dash, input_w, output_w, input_w_attn,
                                          input_v, input_v_attn,  attn_idx,  unrolled_w_model, lr_w, lr_v)
-        self.optimizer_A.zero_grad()
+        self.optimizer_A.zero_grad(set_to_none=True)
         for v, g in zip(self.param, implicit_grads_A):
+            g = g.to_sparse()
             if v.grad is None:
                 v.grad = Variable(g.data)
             else:
                 v.grad.data.copy_(g.data)
-            
+
         self.optimizer_A.step()
 
         del unrolled_w_model
