@@ -33,7 +33,6 @@ def seed_torch(seed=0):
 seed_torch(seed_)
 
 def get_data(dataset, tokenizer):
-    print('get train data start')
     batch = dataset['sentence']
     labels = torch.tensor(dataset['label'])
 
@@ -44,17 +43,16 @@ def get_data(dataset, tokenizer):
     input_ids = encoding['input_ids']
     attention_mask = encoding['attention_mask']
     
-    # print the shapes
-    print("Input shape: ")
-    print(input_ids.shape, attention_mask.shape,labels.shape)
-    
     # turn to the tensordataset
     train_data = TensorDataset(input_ids, attention_mask, labels)
     
     return train_data
     
+def get_dataloader_size(dl):
+    return 'batchsize:'+str(dl.batch_size)+'\t numofbatch:'+str(len(dl))+'\t totoal:'+str(dl.batch_size * len(dl))
+
+
 def get_data_idx(dataset, tokenizer, wdatalen):
-    print('get train data start')
     batch = dataset['sentence']
     labels = torch.tensor(dataset['label'])
 
@@ -66,9 +64,6 @@ def get_data_idx(dataset, tokenizer, wdatalen):
     input_ids = encoding['input_ids']
     attention_mask = encoding['attention_mask']
     
-    # print the shapes
-    print("Input shape: ")
-    print(input_ids.shape, attention_mask.shape,labels.shape)
     
     # turn to the tensordataset
     train_data = TensorDataset(input_ids, attention_mask, labels, attn_idx)

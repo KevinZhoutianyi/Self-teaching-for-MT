@@ -167,12 +167,12 @@ class Architect(object):
              
         unrolled_w_model = self._compute_unrolled_w_model(
             input_w, output_w, input_w_attn, attn_idx,   lr_w, w_optimizer)
-        unrolled_w_model.train() 
+        unrolled_w_model.eval() 
         torch.nn.utils.clip_grad_norm(unrolled_w_model.parameters(), clip)
 
         unrolled_v_model = self._compute_unrolled_v_model(
             input_v, input_v_attn, output_v, input_syn, input_syn_attn, unrolled_w_model,  lr_v, v_optimizer)
-        unrolled_v_model.train()
+        unrolled_v_model.eval()
         torch.nn.utils.clip_grad_norm(unrolled_v_model.parameters(), clip)
         _,unrolled_v_loss = my_loss2(
             input_A_v, input_A_v_attn,  output_A_v,unrolled_v_model)

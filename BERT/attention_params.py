@@ -59,6 +59,8 @@ class attention_params(torch.nn.Module):
         
     def forward(self, idx):
         
-        probs =self.alpha
-        
-        return probs[idx]
+        weight =self.alpha[idx]
+        weight = self.softmax(weight)*weight.shape[0]
+        # weight = torch.clamp(probs, min=0.1,max=0.9)
+        return weight#*idx.shape[0]/(torch.sum(weight))
+        # return probs
