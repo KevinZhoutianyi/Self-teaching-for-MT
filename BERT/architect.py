@@ -195,9 +195,9 @@ class Architect(object):
         for v, g in zip(self.param, implicit_grads_A):
             g = g.to_sparse()
             if v.grad is None:
-                v.grad = Variable(-g.data)#+v.data.to_sparse()*0.00001
+                v.grad = Variable(g.data)#+v.data.to_sparse()*0.00001
             else:
-                v.grad.data.copy_(-g.data)#+v.data.to_sparse()*0.00001
+                v.grad.data.copy_(g.data)#+v.data.to_sparse()*0.00001
 
         self.optimizer_A.step()
 
