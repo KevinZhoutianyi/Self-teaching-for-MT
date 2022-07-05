@@ -1,1 +1,1 @@
-python main.py --train_A 1 --A_lr 1e2 --exp_name Yelp,differentAlr
+python main.py --train_A 1 --A_lr 1e2 --exp_name Yelp,clipdecay,
