@@ -34,7 +34,7 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = -1, help='validation data number')
-parser.add_argument('--train_w_num_points', type=int,           default = 2000, help='train data number')
+parser.add_argument('--train_w_num_points', type=int,           default = 4000, help='train data number')
 parser.add_argument('--train_A_num_points', type=int,           default = 2000, help='train data number')
 parser.add_argument('--unlabel_num_points', type=int,           default = 2000, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = -1, help='train data number')
@@ -57,7 +57,7 @@ parser.add_argument('--test_num', type=int,                     default=-1,     
 
 parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
-# parser.add_argument('--grad_clip', type=float,                  default=5,      help='gradient clipping')
+parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 # parser.add_argument('--grad_acc_count', type=float,             default=-1,      help='gradient accumulate steps')
 
 parser.add_argument('--w_lr', type=float,                       default=2e-6,   help='learning rate for w')
@@ -252,8 +252,8 @@ A = A.cuda()
 # TODO: model loaded from saved model
 model_w = Model(tokenizer, args, 'teacher')
 model_w = model_w.cuda()
-w_optimizer = torch.optim.Adam(model_w.parameters(
-),  lr=args.w_lr,  betas=(args.beta1, args.beta2), eps=1e-8)
+w_optimizer = torch.optim.AdamW(model_w.parameters(
+),  lr=args.w_lr,  betas=(args.beta1, args.beta2), eps=1e-8,weight_decay=1e-4)
 # w_optimizer = Adafactor(model_w.parameters(), lr = args.w_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
 scheduler_w = StepLR(
     w_optimizer, step_size=args.num_step_lr, gamma=args.decay_lr)
@@ -262,8 +262,8 @@ scheduler_w = StepLR(
 
 model_v = Model(tokenizer, args, 'student')
 model_v = model_v.cuda()
-v_optimizer = torch.optim.Adam(model_v.parameters(
-),  lr=args.v_lr,  betas=(args.beta1, args.beta2), eps=1e-8)
+v_optimizer = torch.optim.AdamW(model_v.parameters(
+),  lr=args.v_lr,  betas=(args.beta1, args.beta2), eps=1e-8,weight_decay=1e-4)
 # v_optimizer =Adafactor(model_v.parameters(), lr = args.v_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
 scheduler_v = StepLR(
     v_optimizer, step_size=args.num_step_lr, gamma=args.decay_lr)
@@ -279,7 +279,7 @@ def my_test(_dataloader,model,epoch):
     # logging.info(f"GPU mem before test:{getGPUMem(device)}%")
     acc = 0
     counter = 0
-    model.train()
+    model.eval()
     objs_top1 = AvgrageMeter()
     objs_top5 = AvgrageMeter()
     
@@ -382,7 +382,7 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
             v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, w_optimizer,
                                              input_v, input_v_attn, output_v, input_syn, input_syn_attn,
                                              input_A_v, input_A_v_attn, output_A_v, attn_idx,v_optimizer,
-                                             epsilon_w, epsilon_v)
+                                             epsilon_w, epsilon_v, args.grad_clip)
             objs_v_star_val.update(v_star_val_loss, Asize)
 
         with torch.no_grad():    
@@ -397,7 +397,7 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
         w_optimizer.step()
 
         
-        # torch.nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
+        torch.nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
         prec1, prec5 = accuracy(logits, output_w, topk=(1, 1))
         objs_w_top1.update(prec1.item(), wsize)
         objs_w_top5.update(prec5.item(), wsize)
@@ -415,7 +415,7 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
             objs_v_train.update(loss.item(), vsize)
             v_optimizer.step()
 
-            # torch.nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
+            torch.nn.utils.clip_grad_norm(v_model.parameters(), args.grad_clip)
             prec1, prec5 = accuracy(logits, output_v, topk=(1, 1))
             objs_v_top1.update(prec1.item(), vsize)
             objs_v_top5.update(prec5.item(), vsize)

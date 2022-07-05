@@ -60,7 +60,7 @@ def my_loss2(input_ids, input_attn, target_ids, model):
 # define calc_loss_aug
 
 def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
-    w_model.train()
+    w_model.eval()
     output_ids = w_model(input_syn_ids,input_syn_attn)
     w_model.train()
     output_ids = torch.softmax(output_ids,-1)

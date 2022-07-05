@@ -70,7 +70,10 @@ class Architect(object):
         bias_correction1 = 1 - self.beta1 ** step
         bias_correction2 = 1 - self.beta2 ** step
         g = _concat(torch.autograd.grad(loss, self.w_model.parameters(), retain_graph=True))
-        
+       
+        param = [k for k in  self.w_model.parameters()]#weight decay
+        torch._foreach_mul_(param, 1 -eta_w*1e-4)
+
         m = _concat(w_optimizer.state[v]['exp_avg']
                             for v in self.w_model.parameters()).mul(self.beta1) + (g).mul(1-self.beta1)
         v = _concat(w_optimizer.state[v]['exp_avg_sq']
@@ -123,6 +126,9 @@ class Architect(object):
         bias_correction2 = 1 - self.beta2 ** step
         g = _concat(torch.autograd.grad(v_loss, self.v_model.parameters(), retain_graph=True))
         
+        param = [k for k in  self.v_model.parameters()]#weight decay
+        torch._foreach_mul_(param, 1 -eta_v*1e-4)
+
         m = _concat(v_optimizer.state[v]['exp_avg']
                             for v in self.v_model.parameters()).mul(self.beta1) + (g).mul(1-self.beta1)
         v = _concat(v_optimizer.state[v]['exp_avg_sq']
@@ -163,21 +169,21 @@ class Architect(object):
     def step(self, input_w,  output_w, input_w_attn, w_optimizer,
                                              input_v, input_v_attn, output_v, input_syn, input_syn_attn,
                                              input_A_v, input_A_v_attn, output_A_v, attn_idx,v_optimizer,
-                                             lr_w, lr_v):
+                                             lr_w, lr_v,clip):
              
         unrolled_w_model = self._compute_unrolled_w_model(
             input_w, output_w, input_w_attn, attn_idx,   lr_w, w_optimizer)
         unrolled_w_model.train() 
-        # torch.nn.utils.clip_grad_norm(unrolled_w_model.parameters(), clip)
+        torch.nn.utils.clip_grad_norm(unrolled_w_model.parameters(), clip)
+
 
         unrolled_v_model = self._compute_unrolled_v_model(
             input_v, input_v_attn, output_v, input_syn, input_syn_attn, unrolled_w_model,  lr_v, v_optimizer)
         unrolled_v_model.train()
-        # torch.nn.utils.clip_grad_norm(unrolled_v_model.parameters(), clip)
+        torch.nn.utils.clip_grad_norm(unrolled_v_model.parameters(), clip)
+
         _,unrolled_v_loss = my_loss2(
             input_A_v, input_A_v_attn,  output_A_v,unrolled_v_model)
-
-
         unrolled_v_loss.backward()
             
         vector_s_dash = [v.grad.data for v in unrolled_v_model.parameters()]
