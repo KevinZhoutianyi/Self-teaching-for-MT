@@ -33,7 +33,7 @@ def seed_torch(seed=0):
 seed_torch(seed_)
 
 def get_data(dataset, tokenizer):
-    batch = dataset['sentence']
+    batch = dataset['text']
     labels = torch.tensor(dataset['label'])
 
   
@@ -47,14 +47,28 @@ def get_data(dataset, tokenizer):
     train_data = TensorDataset(input_ids, attention_mask, labels)
     
     return train_data
+def get_syn_data(dataset, tokenizer):
+    batch = dataset['text']
+
+  
+    encoding = tokenizer(batch, return_tensors='pt', padding=True, truncation = True, max_length=max_length)  
+   
+    input_ids = encoding['input_ids']
+    attention_mask = encoding['attention_mask']
+    
+    # turn to the tensordataset
+    train_data = TensorDataset(input_ids, attention_mask)
+    
+    return train_data
+    
     
 def get_dataloader_size(dl):
     return 'batchsize:'+str(dl.batch_size)+'\t numofbatch:'+str(len(dl))+'\t totoal:'+str(dl.batch_size * len(dl))
 
 
 def get_data_idx(dataset, tokenizer, wdatalen):
-    batch = dataset['sentence']
-    labels = torch.tensor(dataset['label'])
+    batch = dataset['text']
+    labels = torch.tensor(dataset['major'])# weakly labeled datasets
 
   
     attn_idx = torch.arange(wdatalen)
@@ -103,6 +117,25 @@ class AvgrageMeter(object):
         self.sum += val * n
         self.cnt += n
         self.avg = self.sum / self.cnt
+
+
+class AvgrageMeter_tensor(object):
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.avg = 0
+        self.sum = 0
+        self.cnt = 0
+
+    def update(self, val, n=1):
+        self.sum += val 
+        self.cnt += n
+        self.avg = self.sum / self.cnt
+
+
+
 def accuracy(output, target, topk=(1,)):
     maxk = max(topk)
     batch_size = target.size(0)
@@ -165,25 +198,7 @@ def turnon_dropout(m):
 def save(x,name):
     torch.save(x,'./model/'+name+'.pt')
 
-# def randomize_model(model):
-#     for module_ in model.named_modules(): 
-#         # print('!',type(module_[1]))
-#         if isinstance(module_[1],(torch.nn.Linear, torch.nn.Embedding)):
-#             module_[1].weight.data.normal_(mean=0.0, std=0.001)
-#         elif isinstance(module_[1], transformers.models.t5.modeling_t5.T5LayerNorm):
-#             module_[1].weight.data.fill_(0.1)
-#         if isinstance(module_[1], torch.nn.Linear) and module_[1].bias is not None:
-#             module_[1].bias.data.zero_()
-#     return model
-# from transformers import AutoTokenizer, GPT2LMHeadModel, T5ForConditionalGeneration, T5Config
-# config = T5Config.from_pretrained('t5-small')
-# print(config)
-# model = T5ForConditionalGeneration(config)
-# model = randomize_model(model)
-# model_size = sum(t.numel() for t in model.parameters())
-# print(f"T5 size: {model_size/1000**2:.1f}M parameters")
-# modelname = 't5-small'
-# torch.save(model,modelname+'.pt')
+
 def compare_model(m1,m2):
     for k1,k2 in zip(m1.state_dict(),m1.state_dict()):
         print(k1[:30],'\t',torch.sum(m1.state_dict()[k1]-m2.state_dict()[k2]))

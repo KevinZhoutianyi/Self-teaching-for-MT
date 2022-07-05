@@ -46,7 +46,7 @@ class Architect(object):
         self.A = A
         self.param = list(filter(lambda x: x.requires_grad, self.A.parameters()))
         
-        self.optimizer_A = torch.optim.SparseAdam(self.param,  lr=args.A_lr)
+        self.optimizer_A = torch.optim.SparseAdam(self.param,  lr=args.A_lr,betas=(0.5, 0.99), eps=1e-8)
 
         
         self.scheduler_A  =   StepLR(self.optimizer_A, step_size=args.num_step_lr, gamma=args.decay_lr)
@@ -163,17 +163,17 @@ class Architect(object):
     def step(self, input_w,  output_w, input_w_attn, w_optimizer,
                                              input_v, input_v_attn, output_v, input_syn, input_syn_attn,
                                              input_A_v, input_A_v_attn, output_A_v, attn_idx,v_optimizer,
-                                             lr_w, lr_v,clip):
+                                             lr_w, lr_v):
              
         unrolled_w_model = self._compute_unrolled_w_model(
             input_w, output_w, input_w_attn, attn_idx,   lr_w, w_optimizer)
-        unrolled_w_model.eval() 
-        torch.nn.utils.clip_grad_norm(unrolled_w_model.parameters(), clip)
+        unrolled_w_model.train() 
+        # torch.nn.utils.clip_grad_norm(unrolled_w_model.parameters(), clip)
 
         unrolled_v_model = self._compute_unrolled_v_model(
             input_v, input_v_attn, output_v, input_syn, input_syn_attn, unrolled_w_model,  lr_v, v_optimizer)
-        unrolled_v_model.eval()
-        torch.nn.utils.clip_grad_norm(unrolled_v_model.parameters(), clip)
+        unrolled_v_model.train()
+        # torch.nn.utils.clip_grad_norm(unrolled_v_model.parameters(), clip)
         _,unrolled_v_loss = my_loss2(
             input_A_v, input_A_v_attn,  output_A_v,unrolled_v_model)
 
@@ -184,13 +184,14 @@ class Architect(object):
 
         implicit_grads_A = self._outer_A(vector_s_dash, input_w, output_w, input_w_attn,
                                          input_v, input_v_attn,  attn_idx,  unrolled_w_model, lr_w, lr_v)
+        save(implicit_grads_A,'gradA')
         self.optimizer_A.zero_grad(set_to_none=True)
         for v, g in zip(self.param, implicit_grads_A):
             g = g.to_sparse()
             if v.grad is None:
-                v.grad = Variable(g.data)
+                v.grad = Variable(g.data)#+v.data.to_sparse()*0.00001
             else:
-                v.grad.data.copy_(g.data)
+                v.grad.data.copy_(g.data)#+v.data.to_sparse()*0.00001
 
         self.optimizer_A.step()
 

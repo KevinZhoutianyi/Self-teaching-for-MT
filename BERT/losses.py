@@ -60,12 +60,32 @@ def my_loss2(input_ids, input_attn, target_ids, model):
 # define calc_loss_aug
 
 def calc_loss_aug(input_syn_ids, input_syn_attn, w_model, v_model):
-    w_model.eval()
+    w_model.train()
     output_ids = w_model(input_syn_ids,input_syn_attn)
-    w_model.eval()
+    w_model.train()
     output_ids = torch.softmax(output_ids,-1)
+    # target = soft_frequency(output_ids, probs = True, soft = True)
     loss_syn = torch.mean(v_model.get_loss_vec(input_syn_ids, input_syn_attn,output_ids)[1])
     
     # w_model.apply(turnon_dropout)
     #.model.loss only calculate for the loss for the target which attn = 1,
     return loss_syn
+
+
+def soft_frequency( logits,  probs=False, soft = True):
+    """
+    Unsupervised Deep Embedding for Clustering Analysis
+    https://arxiv.org/abs/1511.06335
+    """
+    power = 2
+    if not probs:
+        softmax = nn.Softmax(dim=1)
+        y = softmax(logits.view(-1, logits.shape[-1])).view(logits.shape)
+    else:
+        y = logits
+    f = torch.sum(y, dim=0)
+    t = y**power / f
+    #print('t', t)
+    t = t + 1e-10
+    p = t/torch.sum(t, dim=-1, keepdim=True)
+    return p if soft else torch.argmax(p, dim=1)
