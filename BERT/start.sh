@@ -1,1 +1,1 @@
-python main.py --train_A 1 --A_lr 50 --A_bs 16 --epochs 30 --clean_A_data 0 --train_w_num_points 4000 --exp_name Yelp,savedreal,diffAlr
+python main.py --train_A 1 --A_lr 50 --A_bs 16 --epochs 30 --clean_A_data 1 --train_w_num_points 4000 --exp_name Yelp,savedreal,diffAlr
