@@ -190,7 +190,6 @@ class Architect(object):
 
         implicit_grads_A = self._outer_A(vector_s_dash, input_w, output_w, input_w_attn,
                                          input_v, input_v_attn,  attn_idx,  unrolled_w_model, lr_w, lr_v)
-        save(implicit_grads_A,'gradA')
         self.optimizer_A.zero_grad(set_to_none=True)
         for v, g in zip(self.param, implicit_grads_A):
             g = g.to_sparse()
