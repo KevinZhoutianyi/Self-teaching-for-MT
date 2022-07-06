@@ -314,6 +314,7 @@ def my_test(_dataloader,model,epoch):
 
 # %%
 real_label = torch.zeros(train_w_num_points_len,device='cuda',dtype=torch.long)
+major_label = torch.zeros(train_w_num_points_len,device='cuda',dtype=torch.long)
 def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_model, v_model, architect, A, w_optimizer, v_optimizer,  scheduler_w, scheduler_v, tot_iter, past_v_accu):
     objs_w = AvgrageMeter()
     objs_v_syn = AvgrageMeter()
@@ -354,6 +355,7 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
             device, non_blocking=False)
         
         real_label[attn_idx] = real
+        major_label[attn_idx] = output_w
 
         syn_batch = next(iter(syndataloader))
         input_syn = Variable(syn_batch[0], requires_grad=False).to(
@@ -473,6 +475,7 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
                 logging.info('find a better model')
                 torch.save(model_w, './model/'+'model_w.pt')  # +now+
                 torch.save(real_label, './model/'+'real_label.pt')
+                torch.save(major_label, './model/'+'major_label.pt')
                 torch.save(model_v, './model/'+'model_v.pt')
                 torch.save(model_w.state_dict(), os.path.join(
                     wandb.run.dir, "model_w.pt"))
@@ -480,6 +483,8 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
                     wandb.run.dir, "model_v.pt"))
                 torch.save(real_label, os.path.join(
                     wandb.run.dir, "real_label.pt"))
+                torch.save(major_label, os.path.join(
+                    wandb.run.dir, "major_label.pt"))
                 torch.save(A.state_dict(), os.path.join(wandb.run.dir, "A.pt"))
                 wandb.save("./files/*.pt", base_path="./files", policy="live")
             
@@ -516,9 +521,8 @@ w_accu = my_test(test_dataloader, torch.load('./model/'+'model_w.pt'), -2)
 v_accu = my_test(test_dataloader, torch.load('./model/'+'model_v.pt'), -2)
 logging.info(f'best w on test:{w_accu} accuracy; best v on test:{v_accu} accuracy')
 
-
-# %%
-real_label
+wandb.log({'v_testdata_accuracy': v_accu})
+wandb.log({'w_testdata_accuracy': w_accu})
 
 # %%
 
