@@ -35,7 +35,7 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = -1, help='validation data number')
-parser.add_argument('--train_w_num_points', type=int,           default = 4000, help='train data number')
+parser.add_argument('--train_w_num_points', type=int,           default = 400, help='train data number')
 parser.add_argument('--train_A_num_points', type=int,           default = 2000, help='train data number')
 parser.add_argument('--unlabel_num_points', type=int,           default = 2000, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = -1, help='train data number')
@@ -95,14 +95,14 @@ parser.add_argument('--out_dim', type=int,                      default=2 ,     
 
 args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
 
-args.test_num = args.test_num//args.batch_size * args.batch_size
+args.test_num = args.test_num//args.w_bs * args.w_bs
 args.train_w_num_points= args.train_w_num_points//args.w_bs * args.w_bs
 args.train_A_num_points= args.train_A_num_points//args.A_bs * args.A_bs
 args.unlabel_num_points= args.unlabel_num_points//args.syn_bs * args.syn_bs
 args.rep_num = args.rep_num//args.batch_size * args.batch_size
 
 args.test_num = args.train_w_num_points #TODO: test each epoch
-args.rep_num = (args.train_w_num_points//4)//args.batch_size * args.batch_size#TODO: test each epoch
+args.rep_num = (args.train_w_num_points//4)//args.w_bs * args.w_bs#TODO: test each epoch
 
 # %%
 # https://wandb.ai/ check the running status online
@@ -211,7 +211,7 @@ logging.info("test len: %d", len(test))
 
 # Create the DataLoader for our training set.
 train_w_data = get_data_idx(train[:train_w_num_points_len], tokenizer,train_w_num_points_len)
-train_A_data = get_data(train[train_w_num_points_len:], tokenizer)#TODO:use label now
+train_A_data = get_data_A(train[train_w_num_points_len:], tokenizer,args.clean_A_data)#TODO:use label now
 train_syn_data = get_syn_data(unlabeled, tokenizer)
 
 # indices = list(range(len(train)-train_w_num_points_len))
@@ -385,7 +385,6 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
             output_v = output_w
             vsize = wsize
 
-        # input_w[:8,1:]= input_w[:8,1:] + torch.randint(0, 10, (input_w.shape[1]-1,),device='cuda')# noise input# bert would not learn from influent sentences
 
         v_star_val_loss=0
         if (args.train_A == 1 and epoch>=args.pre_epochs):
@@ -471,8 +470,8 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
             wandb.log({'W_test_accuracy': w_accu})
             wandb.log({'v_test_accuracy':v_accu})
             torch.save(A, './model/'+'A.pt')
-            predict_correct = architect.alpha>0 #its correct major?
-            actual =  (real_label[1]==major_label[2])
+            predict_correct = A.alpha>0 #its correct major?
+            actual =  (real_label==major_label)
             weight_accuracy = torch.sum(actual==predict_correct)/actual.shape[0]
             wandb.log({'weight_accuracy':weight_accuracy})
             logging.info(f'weight_accuracy:{weight_accuracy}')
@@ -529,6 +528,9 @@ logging.info(f'best w on test:{w_accu} accuracy; best v on test:{v_accu} accurac
 
 wandb.log({'v_testdata_accuracy': v_accu})
 wandb.log({'w_testdata_accuracy': w_accu})
+
+# %%
+real_label
 
 # %%
 
