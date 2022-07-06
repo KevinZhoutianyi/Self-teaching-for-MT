@@ -314,8 +314,7 @@ def my_test(_dataloader,model,epoch):
         
 
 # %%
-real_label = torch.zeros(train_w_num_points_len,device='cuda',dtype=torch.long)
-major_label = torch.zeros(train_w_num_points_len,device='cuda',dtype=torch.long)
+
 def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_model, v_model, architect, A, w_optimizer, v_optimizer,  scheduler_w, scheduler_v, tot_iter, past_v_accu):
     objs_w = AvgrageMeter()
     objs_v_syn = AvgrageMeter()
@@ -327,6 +326,8 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
     objs_v_top1 = AvgrageMeter()
     objs_v_top5 = AvgrageMeter()
     objs_weight = AvgrageMeter_tensor()
+    objs_cor_weight = AvgrageMeter()
+    objs_incor_weight = AvgrageMeter()
     improvementacc = 0
     w_trainloss_acc = 0
     # now  train_x is [num of batch, datasize], so its seperate batch for the code below
@@ -355,8 +356,6 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
         real = Variable(w_batch[4], requires_grad=False).to(
             device, non_blocking=False)
         
-        real_label[attn_idx] = real
-        major_label[attn_idx] = output_w
 
         syn_batch = next(iter(syndataloader))
         input_syn = Variable(syn_batch[0], requires_grad=False).to(
@@ -396,8 +395,17 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
                                              epsilon_w, epsilon_v, args.grad_clip)
             objs_v_star_val.update(v_star_val_loss, Asize)
 
+
+
+
         with torch.no_grad():    
-            objs_weight.update(A(input_w, input_w_attn, attn_idx).data)
+            sampleweight = A(input_w, input_w_attn, attn_idx).data
+            iscor = real==output_w
+            cor_mean = torch.mean(sampleweight[iscor])#correct label mean weight
+            incor_mean = torch.mean(sampleweight[~iscor])#incorrect label mean weight
+            objs_weight.update(sampleweight)
+            objs_cor_weight.update(cor_mean,torch.sum(iscor))
+            objs_incor_weight.update(incor_mean,torch.sum(~iscor))
 
         w_optimizer.zero_grad()
         logits, loss_w = CTG_loss(input_w, input_w_attn, output_w,
@@ -469,27 +477,20 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
             v_accu = my_test(validdataloader, model_v, epoch)
             wandb.log({'W_test_accuracy': w_accu})
             wandb.log({'v_test_accuracy':v_accu})
-            torch.save(A, './model/'+'A.pt')
-            predict_correct = A.alpha>0 #its correct major?
-            actual =  (real_label==major_label)
-            weight_accuracy = torch.sum(actual==predict_correct)/actual.shape[0]
-            wandb.log({'weight_accuracy':weight_accuracy})
-            logging.info(f'weight_accuracy:{weight_accuracy}')
+            wandb.log({'correct_label_mean_weight': objs_cor_weight.avg})
+            wandb.log({'wrong_label_mean_weight':objs_incor_weight.avg})
+            logging.info(f'correct label mean weight: {objs_cor_weight.avg}, wrong label mean weight: {objs_incor_weight.avg}')
+            objs_cor_weight.reset()
+            objs_incor_weight.reset()
             if(v_accu>past_v_accu):
                 past_v_accu = v_accu
                 logging.info('find a better model')
                 torch.save(model_w, './model/'+'model_w.pt')  # +now+
-                torch.save(real_label, './model/'+'real_label.pt')
-                torch.save(major_label, './model/'+'major_label.pt')
                 torch.save(model_v, './model/'+'model_v.pt')
                 torch.save(model_w.state_dict(), os.path.join(
                     wandb.run.dir, "model_w.pt"))
                 torch.save(model_v.state_dict(), os.path.join(
                     wandb.run.dir, "model_v.pt"))
-                torch.save(real_label, os.path.join(
-                    wandb.run.dir, "real_label.pt"))
-                torch.save(major_label, os.path.join(
-                    wandb.run.dir, "major_label.pt"))
                 torch.save(A.state_dict(), os.path.join(wandb.run.dir, "A.pt"))
                 wandb.save("./files/*.pt", base_path="./files", policy="live")
             
@@ -528,9 +529,6 @@ logging.info(f'best w on test:{w_accu} accuracy; best v on test:{v_accu} accurac
 
 wandb.log({'v_testdata_accuracy': v_accu})
 wandb.log({'w_testdata_accuracy': w_accu})
-
-# %%
-real_label
 
 # %%
 
