@@ -49,7 +49,7 @@ class Architect(object):
         self.optimizer_A = torch.optim.SparseAdam(self.param,  lr=args.A_lr,betas=(0.5, 0.99), eps=1e-8)
 
         
-        self.scheduler_A  =   StepLR(self.optimizer_A, step_size=args.num_step_lr, gamma=args.decay_lr)
+        self.scheduler_A  =  None# StepLR(self.optimizer_A, step_size=args.num_step_lr, gamma=args.decay_lr)
 
     #########################################################################################
     # Computation of G' model named as unrolled model

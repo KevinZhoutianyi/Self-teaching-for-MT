@@ -70,6 +70,8 @@ def get_data_idx(dataset, tokenizer, wdatalen):
     batch = dataset['text']
     labels = torch.tensor(dataset['major'])# weakly labeled datasets
 
+    real_labels = torch.tensor(dataset['label'])# weakly labeled datasets
+
   
     attn_idx = torch.arange(wdatalen)
     encoding = tokenizer(batch, return_tensors='pt', padding=True, truncation = True, max_length=max_length)  
@@ -80,7 +82,7 @@ def get_data_idx(dataset, tokenizer, wdatalen):
     
     
     # turn to the tensordataset
-    train_data = TensorDataset(input_ids, attention_mask, labels, attn_idx)
+    train_data = TensorDataset(input_ids, attention_mask, labels, attn_idx,real_labels)
     
     return train_data
 def accuracy(output, target, topk=(1,)):

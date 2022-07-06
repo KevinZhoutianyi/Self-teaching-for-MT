@@ -28,6 +28,7 @@ import string
 from torch.optim.lr_scheduler import LambdaLR
 from os.path import exists
 from torch.optim.lr_scheduler import StepLR
+from transformers import get_linear_schedule_with_warmup
 
 # %%
 parser = argparse.ArgumentParser("main")
@@ -55,7 +56,7 @@ parser.add_argument('--exp_name', type=str,                     default='yelp', 
 parser.add_argument('--rep_num', type=int,                      default=-1,      help='report times for 1 epoch')
 parser.add_argument('--test_num', type=int,                     default=-1,      help='test times for 1 epoch')
 
-parser.add_argument('--epochs', type=int,                       default=50,     help='num of training epochs')
+parser.add_argument('--epochs', type=int,                       default=10,     help='num of training epochs')
 parser.add_argument('--pre_epochs', type=int,                   default=0,      help='train model W for x epoch first')
 parser.add_argument('--grad_clip', type=float,                  default=1,      help='gradient clipping')
 # parser.add_argument('--grad_acc_count', type=float,             default=-1,      help='gradient accumulate steps')
@@ -64,7 +65,7 @@ parser.add_argument('--w_lr', type=float,                       default=2e-6,   
 parser.add_argument('--unrolled_w_lr', type=float,              default=2e-6,   help='learning rate for w')
 parser.add_argument('--v_lr', type=float,                       default=2e-6,   help='learning rate for v')
 parser.add_argument('--unrolled_v_lr', type=float,              default=2e-6,   help='learning rate for v')
-parser.add_argument('--A_lr', type=float,                       default=1 ,   help='learning rate for A')
+parser.add_argument('--A_lr', type=float,                       default=100 ,   help='learning rate for A')
 # parser.add_argument('--learning_rate_min', type=float,          default=1e-8,   help='learning_rate_min')
 # parser.add_argument('--decay', type=float,                      default=1e-3,   help='weight decay')
 parser.add_argument('--beta1', type=float,                      default=0.9,    help='momentum')
@@ -255,8 +256,8 @@ model_w = model_w.cuda()
 w_optimizer = torch.optim.AdamW(model_w.parameters(
 ),  lr=args.w_lr,  betas=(args.beta1, args.beta2), eps=1e-8,weight_decay=1e-4)
 # w_optimizer = Adafactor(model_w.parameters(), lr = args.w_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
-scheduler_w = StepLR(
-    w_optimizer, step_size=args.num_step_lr, gamma=args.decay_lr)
+
+scheduler_w = get_linear_schedule_with_warmup(w_optimizer, num_warmup_steps=args.epochs, num_training_steps=len(train_w_dataloader) * args.epochs)
 # scheduler_w  = Scheduler(w_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.w_lr)
 
 
@@ -265,13 +266,15 @@ model_v = model_v.cuda()
 v_optimizer = torch.optim.AdamW(model_v.parameters(
 ),  lr=args.v_lr,  betas=(args.beta1, args.beta2), eps=1e-8,weight_decay=1e-4)
 # v_optimizer =Adafactor(model_v.parameters(), lr = args.v_lr ,scale_parameter=False, relative_step=False , warmup_init=False,clip_threshold=1,beta1=0,eps=( 1e-30,0.001))
-scheduler_v = StepLR(
-    v_optimizer, step_size=args.num_step_lr, gamma=args.decay_lr)
+
+scheduler_v = get_linear_schedule_with_warmup(v_optimizer, num_warmup_steps=args.epochs, num_training_steps=len(train_w_dataloader) * args.epochs)
+#  scheduler_v = StepLR(
+    # v_optimizer, step_size=args.num_step_lr, gamma=args.decay_lr)
 # scheduler_v  = Scheduler(v_optimizer,dim_embed=512, warmup_steps=args.warm, initlr = args.v_lr)
 
 
 architect = Architect(model_w, model_v,  A, args)
-
+architect.scheduler_A = get_linear_schedule_with_warmup(architect.optimizer_A, num_warmup_steps=args.epochs, num_training_steps=len(train_w_dataloader) * args.epochs)
 
 # %%
 @torch.no_grad()
@@ -310,7 +313,8 @@ def my_test(_dataloader,model,epoch):
         
 
 # %%
-def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_model, v_model, architect, A, w_optimizer, v_optimizer, lr_w, lr_v, tot_iter, past_v_accu):
+real_label = torch.zeros(train_w_num_points_len,device='cuda',dtype=torch.long)
+def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_model, v_model, architect, A, w_optimizer, v_optimizer,  scheduler_w, scheduler_v, tot_iter, past_v_accu):
     objs_w = AvgrageMeter()
     objs_v_syn = AvgrageMeter()
     objs_v_train = AvgrageMeter()
@@ -333,7 +337,9 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
     v_model.train()
 
     for step, w_batch in enumerate(wdataloader):
-
+        scheduler_w.step()
+        scheduler_v.step()
+        architect.scheduler_A.step()
 
 
         input_w = Variable(w_batch[0], requires_grad=False).to(
@@ -344,7 +350,10 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
             device, non_blocking=False)
         attn_idx = Variable(w_batch[3], requires_grad=False).to(
             device, non_blocking=False)
-
+        real = Variable(w_batch[4], requires_grad=False).to(
+            device, non_blocking=False)
+        
+        real_label[attn_idx] = real
 
         syn_batch = next(iter(syndataloader))
         input_syn = Variable(syn_batch[0], requires_grad=False).to(
@@ -377,8 +386,8 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
 
         v_star_val_loss=0
         if (args.train_A == 1 and epoch>=args.pre_epochs):
-            epsilon_w = args.unrolled_w_lr
-            epsilon_v  = args.unrolled_v_lr
+            epsilon_w = scheduler_w.get_lr()[0]
+            epsilon_v  = scheduler_v.get_lr()[0]
             v_star_val_loss = architect.step(input_w,  output_w, input_w_attn, w_optimizer,
                                              input_v, input_v_attn, output_v, input_syn, input_syn_attn,
                                              input_A_v, input_A_v_attn, output_A_v, attn_idx,v_optimizer,
@@ -395,8 +404,6 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
         loss_w.backward()
         objs_w.update(loss_w.item(), wsize)
         w_optimizer.step()
-
-        
         torch.nn.utils.clip_grad_norm(w_model.parameters(), args.grad_clip)
         prec1, prec5 = accuracy(logits, output_w, topk=(1, 1))
         objs_w_top1.update(prec1.item(), wsize)
@@ -426,11 +433,6 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
             input_A_v, input_A_v_attn,  output_A_v,model_v)
             improvementacc+=v_star_val_loss-new_v_loss.item()
             objs_v_val.update(new_v_loss.item(), Asize)
-
-
-
-
-
 
 
         progress = 100*(step)/(loader_len-1)
@@ -465,12 +467,13 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
             v_accu = my_test(validdataloader, model_v, epoch)
             wandb.log({'W_test_accuracy': w_accu})
             wandb.log({'v_test_accuracy':v_accu})
+            torch.save(A, './model/'+'A.pt')
             if(v_accu>past_v_accu):
                 past_v_accu = v_accu
                 logging.info('find a better model')
                 torch.save(model_w, './model/'+'model_w.pt')  # +now+
+                torch.save(real_label, './model/'+'real_label.pt')
                 torch.save(model_v, './model/'+'model_v.pt')
-                torch.save(A, './model/'+'A.pt')
                 torch.save(model_w.state_dict(), os.path.join(
                     wandb.run.dir, "model_w.pt"))
                 torch.save(model_v.state_dict(), os.path.join(
@@ -499,11 +502,11 @@ for epoch in range(args.epochs):
         f"\n\n  ----------------epoch:{epoch},\t\tlr_w:{lr_w},\t\tlr_v:{lr_v},\t\tlr_A:{lr_A}----------------")
 
     w_train_loss,v_accu = my_train(epoch, train_w_dataloader,train_syn_dataloader,train_A_dataloader, valid_dataloader, model_w,
-                            model_v,  architect, A, w_optimizer, v_optimizer, lr_w, lr_v, tot_iter,v_accu)
+                            model_v,  architect, A, w_optimizer, v_optimizer, scheduler_w, scheduler_v, tot_iter,v_accu)
 
-    scheduler_w.step()
-    scheduler_v.step()
-    architect.scheduler_A.step()
+    # scheduler_w.step()
+    # scheduler_v.step()
+    # architect.scheduler_A.step()
 
 
 
@@ -511,6 +514,9 @@ w_accu = my_test(test_dataloader, torch.load('./model/'+'model_w.pt'), -2)
 v_accu = my_test(test_dataloader, torch.load('./model/'+'model_v.pt'), -2)
 logging.info(f'best w on test:{w_accu} accuracy; best v on test:{v_accu} accuracy')
 
+
+# %%
+real_label
 
 # %%
 
