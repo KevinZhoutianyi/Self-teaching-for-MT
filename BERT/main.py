@@ -83,6 +83,7 @@ parser.add_argument('--syndata_loss_ratio', type=float,         default=1,    he
 parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
 parser.add_argument('--train_A', type=int,                      default=1 ,     help='whether train A')
 parser.add_argument('--attack', type=int,                       default=0 ,     help='whether att')
+parser.add_argument('--clean_A_data', type=int,                 default=1 ,     help='whether att')
 
 # parser.add_argument('--embedding_dim', type=int,                default=300 ,     help='whether train A')
 parser.add_argument('--out_dim', type=int,                      default=2 ,     help='whether train A')
@@ -210,7 +211,7 @@ logging.info("test len: %d", len(test))
 
 # Create the DataLoader for our training set.
 train_w_data = get_data_idx(train[:train_w_num_points_len], tokenizer,train_w_num_points_len)
-train_A_data = get_data(train[train_w_num_points_len:], tokenizer)
+train_A_data = get_data(train[train_w_num_points_len:], tokenizer)#TODO:use label now
 train_syn_data = get_syn_data(unlabeled, tokenizer)
 
 # indices = list(range(len(train)-train_w_num_points_len))
@@ -430,7 +431,7 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
             objs_v_top5.update(prec5.item(), vsize)
 
 
-        with torch.no_grad():
+        with torch.no_grad():#new V validation 
             _,new_v_loss = my_loss2(
             input_A_v, input_A_v_attn,  output_A_v,model_v)
             improvementacc+=v_star_val_loss-new_v_loss.item()
@@ -470,6 +471,11 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
             wandb.log({'W_test_accuracy': w_accu})
             wandb.log({'v_test_accuracy':v_accu})
             torch.save(A, './model/'+'A.pt')
+            predict_correct = architect.alpha>0 #its correct major?
+            actual =  (real_label[1]==major_label[2])
+            weight_accuracy = torch.sum(actual==predict_correct)/actual.shape[0]
+            wandb.log({'weight_accuracy':weight_accuracy})
+            logging.info(f'weight_accuracy:{weight_accuracy}')
             if(v_accu>past_v_accu):
                 past_v_accu = v_accu
                 logging.info('find a better model')

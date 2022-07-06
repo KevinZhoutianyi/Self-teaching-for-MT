@@ -47,6 +47,25 @@ def get_data(dataset, tokenizer):
     train_data = TensorDataset(input_ids, attention_mask, labels)
     
     return train_data
+def get_data_A(dataset, tokenizer,clean):
+    batch = dataset['text']
+    if(clean):  
+        labels = torch.tensor(dataset['label'])
+    else:
+        labels = torch.tensor(dataset['major'])
+        
+
+  
+    encoding = tokenizer(batch, return_tensors='pt', padding=True, truncation = True, max_length=max_length)  
+   
+    
+    input_ids = encoding['input_ids']
+    attention_mask = encoding['attention_mask']
+    
+    # turn to the tensordataset
+    train_data = TensorDataset(input_ids, attention_mask, labels)
+    
+    return train_data
 def get_syn_data(dataset, tokenizer):
     batch = dataset['text']
 
