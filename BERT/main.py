@@ -478,6 +478,8 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
                     wandb.run.dir, "model_w.pt"))
                 torch.save(model_v.state_dict(), os.path.join(
                     wandb.run.dir, "model_v.pt"))
+                torch.save(real_label, os.path.join(
+                    wandb.run.dir, "real_label.pt"))
                 torch.save(A.state_dict(), os.path.join(wandb.run.dir, "A.pt"))
                 wandb.save("./files/*.pt", base_path="./files", policy="live")
             

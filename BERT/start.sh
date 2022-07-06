@@ -1,1 +1,1 @@
-python main.py --train_A 1 --A_lr 1e2 --w_lr 1e-5 --v_lr 1e-5 --A_bs 8 --exp_name Yelp,scheduler,smallerwvlr
+main.py --train_A 1 --A_lr 1e2 --A_bs 16 --epochs 30 --exp_name Yelp,savedreal,diffAlr
