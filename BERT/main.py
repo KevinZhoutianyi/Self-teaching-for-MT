@@ -35,9 +35,9 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = -1, help='validation data number')
-parser.add_argument('--train_w_num_points', type=int,           default = 4000, help='train data number')
+parser.add_argument('--train_w_num_points', type=int,           default = 4000, help='train data number')#80*x
 parser.add_argument('--train_A_num_points', type=int,           default = 2000, help='train data number')
-parser.add_argument('--unlabel_num_points', type=int,           default = 2000, help='train data number')
+parser.add_argument('--unlabel_num_points', type=int,           default = 4000, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = -1, help='train data number')
 
 parser.add_argument('--batch_size', type=int,                   default=32,     help='Batch size for test and validation')
@@ -81,12 +81,12 @@ parser.add_argument('--traindata_loss_ratio', type=float,       default=0,    he
 parser.add_argument('--syndata_loss_ratio', type=float,         default=1,    help='augmented dataset ratio')
 
 parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
-parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
+parser.add_argument('--train_A', type=int,                      default=1 ,     help='whether train A')
 parser.add_argument('--attack', type=int,                       default=0 ,     help='whether att')
 parser.add_argument('--clean_A_data', type=int,                 default=1 ,     help='whether att')
 
 
-parser.add_argument('--load_A', type=int,                       default=1 ,     help='whether att')
+parser.add_argument('--load_A', type=int,                       default=0 ,     help='whether att')
 parser.add_argument('--A_path', type=str,                       default='/tianyi-vol/Self-teaching-for-machine-translation/BERT/trainedA/A.pt' ,     help='whether att')
 
 # parser.add_argument('--embedding_dim', type=int,                default=300 ,     help='whether train A')
@@ -99,14 +99,13 @@ parser.add_argument('--out_dim', type=int,                      default=2 ,     
 
 args = parser.parse_args()#(args=['--batch_size', '8',  '--no_cuda'])#used in ipynb
 
-args.test_num = args.test_num//args.w_bs * args.w_bs
+args.test_num = args.train_w_num_points #TODO: test each epoch
+args.rep_num = (args.train_w_num_points//5)//args.w_bs * args.w_bs#TODO: test each epoch
+
 args.train_w_num_points= args.train_w_num_points//args.w_bs * args.w_bs
 args.train_A_num_points= args.train_A_num_points//args.A_bs * args.A_bs
 args.unlabel_num_points= args.unlabel_num_points//args.syn_bs * args.syn_bs
-args.rep_num = args.rep_num//args.batch_size * args.batch_size
 
-args.test_num = args.train_w_num_points #TODO: test each epoch
-args.rep_num = (args.train_w_num_points//4)//args.w_bs * args.w_bs#TODO: test each epoch
 
 # %%
 # https://wandb.ai/ check the running status online
@@ -321,7 +320,8 @@ def my_test(_dataloader,model,epoch):
         
 
 # %%
-
+best_v = None
+best_w = None
 def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_model, v_model, architect, A, w_optimizer, v_optimizer,  scheduler_w, scheduler_v, tot_iter, past_v_accu):
     objs_w = AvgrageMeter()
     objs_v_syn = AvgrageMeter()
@@ -363,7 +363,6 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
         real = Variable(w_batch[4], requires_grad=False).to(
             device, non_blocking=False)
         
-
         syn_batch = next(iter(syndataloader))
         input_syn = Variable(syn_batch[0], requires_grad=False).to(
             device, non_blocking=False)
@@ -457,6 +456,7 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
         
         if(tot_iter[0] % args.rep_num == 0 and tot_iter[0] != 0):
             logging.info('\n')
+            
             logging.info(f"{progress:5.3}%:||W_train_loss:{objs_w.avg:^.7f}|V_train_syn_loss:{objs_v_syn.avg:^.7f}|V_train_loss:{objs_v_train.avg:^.7f}|V_val_loss:{objs_v_val.avg:^.7f}|V_star_val_loss:{objs_v_star_val.avg:^.7f}|improvement:{objs_v_star_val.avg-objs_v_val.avg:^.7f}|w_top1:{objs_w_top1.avg:^.7f}|w_top5:{objs_w_top5.avg:^.7f}|v_top1:{objs_v_top1.avg:^.7f}|v_top5:{objs_v_top5.avg:^.7f}|")
             temp = objs_weight.avg
             logging.info(f"avg weight:{temp}")
@@ -489,17 +489,19 @@ def my_train(epoch, wdataloader,syndataloader,Adataloader, validdataloader, w_mo
             logging.info(f'correct label mean weight: {objs_cor_weight.avg}, wrong label mean weight: {objs_incor_weight.avg}')
             objs_cor_weight.reset()
             objs_incor_weight.reset()
+            torch.save(A.state_dict(), os.path.join(wandb.run.dir, "A.pt"))
             if(v_accu>past_v_accu):
                 past_v_accu = v_accu
                 logging.info('find a better model')
-                torch.save(model_w, './model/'+'model_w.pt')  # +now+
-                torch.save(model_v, './model/'+'model_v.pt')
+                global best_w
+                global best_v
+                best_v = copy.deepcopy(model_v)
+                best_w = copy.deepcopy(model_w)
                 torch.save(model_w.state_dict(), os.path.join(
                     wandb.run.dir, "model_w.pt"))
                 torch.save(model_v.state_dict(), os.path.join(
                     wandb.run.dir, "model_v.pt"))
-                torch.save(A.state_dict(), os.path.join(wandb.run.dir, "A.pt"))
-                wandb.save("./files/*.pt", base_path="./files", policy="live")
+            wandb.save("./files/*.pt", base_path="./files", policy="live")
             
             logging.info(f'current best accuracy:{past_v_accu}')
     logging.info(f'improvment:{improvementacc}')
@@ -530,19 +532,12 @@ for epoch in range(args.epochs):
 
 
 
-w_accu = my_test(test_dataloader, torch.load('./model/'+'model_w.pt'), -2)
-v_accu = my_test(test_dataloader, torch.load('./model/'+'model_v.pt'), -2)
+w_accu = my_test(test_dataloader,best_w, -2)
+v_accu = my_test(test_dataloader,best_v, -2)
 logging.info(f'best w on test:{w_accu} accuracy; best v on test:{v_accu} accuracy')
 
 wandb.log({'v_testdata_accuracy': v_accu})
 wandb.log({'w_testdata_accuracy': w_accu})
-
-# %%
-
-# w_accu = my_test(test_dataloader, torch.load('./model/'+'model_w.pt'), -2)
-# v_accu = my_test(test_dataloader, torch.load('./model/'+'model_v.pt'), -2)
-
-# logging.info(f'best w on test:{w_accu} accuracy; best v on test:{v_accu} accuracy')
 
 # %%
 
