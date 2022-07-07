@@ -35,7 +35,7 @@ parser = argparse.ArgumentParser("main")
 
 
 parser.add_argument('--valid_num_points', type=int,             default = -1, help='validation data number')
-parser.add_argument('--train_w_num_points', type=int,           default = 400, help='train data number')
+parser.add_argument('--train_w_num_points', type=int,           default = 4000, help='train data number')
 parser.add_argument('--train_A_num_points', type=int,           default = 2000, help='train data number')
 parser.add_argument('--unlabel_num_points', type=int,           default = 2000, help='train data number')
 parser.add_argument('--test_num_points', type=int,              default = -1, help='train data number')
@@ -81,9 +81,13 @@ parser.add_argument('--traindata_loss_ratio', type=float,       default=0,    he
 parser.add_argument('--syndata_loss_ratio', type=float,         default=1,    help='augmented dataset ratio')
 
 parser.add_argument('--valid_begin', type=int,                  default=1,      help='whether valid before train')
-parser.add_argument('--train_A', type=int,                      default=1 ,     help='whether train A')
+parser.add_argument('--train_A', type=int,                      default=0 ,     help='whether train A')
 parser.add_argument('--attack', type=int,                       default=0 ,     help='whether att')
 parser.add_argument('--clean_A_data', type=int,                 default=1 ,     help='whether att')
+
+
+parser.add_argument('--load_A', type=int,                       default=1 ,     help='whether att')
+parser.add_argument('--A_path', type=str,                       default='/tianyi-vol/Self-teaching-for-machine-translation/BERT/trainedA/A.pt' ,     help='whether att')
 
 # parser.add_argument('--embedding_dim', type=int,                default=300 ,     help='whether train A')
 parser.add_argument('--out_dim', type=int,                      default=2 ,     help='whether train A')
@@ -250,7 +254,10 @@ logging.info(f'test data size:{get_dataloader_size(test_dataloader)}')
 
 A = attention_params(tokenizer, args, train_w_num_points_len)  # half of train regarded as u
 A = A.cuda()
-
+if(args.load_A==1):
+    state_dict = A.state_dict()
+    state_dict['alpha'] = torch.load(args.A_path)['alpha']
+    A.load_state_dict(state_dict)
 # TODO: model loaded from saved model
 model_w = Model(tokenizer, args, 'teacher')
 model_w = model_w.cuda()
@@ -532,10 +539,10 @@ wandb.log({'w_testdata_accuracy': w_accu})
 
 # %%
 
-w_accu = my_test(test_dataloader, torch.load('./model/'+'model_w.pt'), -2)
-v_accu = my_test(test_dataloader, torch.load('./model/'+'model_v.pt'), -2)
+# w_accu = my_test(test_dataloader, torch.load('./model/'+'model_w.pt'), -2)
+# v_accu = my_test(test_dataloader, torch.load('./model/'+'model_v.pt'), -2)
 
-logging.info(f'best w on test:{w_accu} accuracy; best v on test:{v_accu} accuracy')
+# logging.info(f'best w on test:{w_accu} accuracy; best v on test:{v_accu} accuracy')
 
 # %%
 
