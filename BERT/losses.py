@@ -89,3 +89,9 @@ def soft_frequency( logits,  probs=False, soft = True):
     t = t + 1e-10
     p = t/torch.sum(t, dim=-1, keepdim=True)
     return p if soft else torch.argmax(p, dim=1)
+def uncertainty(x,x_attn,model):
+    logits = model(x,x_attn)
+    p = torch.softmax(logits,-1)
+    return entropy(p)
+def entropy(p, dim = -1, keepdim = None):
+   return -torch.where(p > 0, p * p.log(), p.new([0.0])).sum(dim = dim) # can be a scalar, when PyTorch.supports it
